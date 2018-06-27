@@ -1,0 +1,260 @@
+html,
+body {
+    height: 100%;
+}
+
+.wrap {
+    min-height: 100%;
+    height: auto;
+    margin: 0 auto -60px;
+    padding: 0 0 60px;
+}
+
+.wrap > .container {
+    padding: 70px 15px 20px;
+}
+
+.footer {
+    height: 60px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+}
+
+.jumbotron {
+    text-align: center;
+    background-color: transparent;
+}
+
+.jumbotron .btn {
+    font-size: 21px;
+    padding: 14px 24px;
+}
+
+.not-set {
+    color: #c55;
+    font-style: italic;
+}
+
+/* add sorting icons to gridview sort links */
+a.asc:after, a.desc:after {
+    position: relative;
+    top: 1px;
+    display: inline-block;
+    font-family: 'Glyphicons Halflings';
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    padding-left: 5px;
+}
+
+a.asc:after {
+    content: /*"\e113"*/ "\e151";
+}
+
+a.desc:after {
+    content: /*"\e114"*/ "\e152";
+}
+
+.sort-numerical a.asc:after {
+    content: "\e153";
+}
+
+.sort-numerical a.desc:after {
+    content: "\e154";
+}
+
+.sort-ordinal a.asc:after {
+    content: "\e155";
+}
+
+.sort-ordinal a.desc:after {
+    content: "\e156";
+}
+
+.grid-view th {
+    white-space: nowrap;
+}
+
+.hint-block {
+    display: block;
+    margin-top: 5px;
+    color: #999;
+}
+
+.error-summary {
+    color: #a94442;
+    background: #fdf7f7;
+    border-left: 3px solid #eed3d7;
+    padding: 10px 20px;
+    margin: 0 0 15px 0;
+}
+
+/* align the logout "link" (button in form) of the navbar */
+.nav li > form > button.logout {
+    padding: 15px;
+    border: none;
+}
+
+@media(max-width:767px) {
+    .nav li > form > button.logout {
+        display:block;
+        text-align: left;
+        width: 100%;
+        padding: 10px 15px;
+    }
+}
+
+.nav > li > form > button.logout:focus,
+.nav > li > form > button.logout:hover {
+    text-decoration: none;
+}
+
+.nav > li > form > button.logout:focus {
+    outline: none;
+}
+.category-link {
+    margin-left:5px;
+}
+.form-horizontal .form-group {
+    margin:0 !important;
+}
+.form-horizontal .control-label {
+    text-align: left;
+}
+
+
+/** Crontab页面的样式 */
+/**
+ * JQUERY UI UPDATE
+ */
+.smart-form .ui-widget-content .ui-spinner-input {
+    margin: 0px;
+    border: 0px;
+    box-shadow: none !important;
+    height: 29px;
+}
+/*
+ * JQUI SPINNERS
+ */
+.ui-spinner-input {
+    margin: 0 !important;
+    height: 30px;
+    padding: 6px 24px 6px 12px;
+}
+.ui-spinner-input.spinner-left {
+    padding: 6px 12px 6px 24px;
+}
+.ui-spinner {
+    width: 100%;
+}
+.ui-spinner-input.spinner-left + .ui-spinner-button,
+.ui-spinner-input.spinner-left + .ui-spinner-button + .ui-spinner-button {
+    right: auto;
+    left: 0px;
+}
+.ui-spinner-up,
+.ui-spinner-down {
+    background: #00c0ef;
+    border-radius: 0px;
+}
+.ui-spinner-up:hover,.ui-spinner-down:hover,
+.ui-spinner-up:active,.ui-spinner-down:active,
+.ui-spinner-up:focus,.ui-spinner-down:focus {
+    background: #ff2f3b;
+}
+
+.ui-spinner-down {
+    /*background: #c2032f;*/
+}
+.ui-spinner-up:before,
+.ui-spinner-down:before {
+    display: inline-block;
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    content: "\f067";
+    color: #ffffff;
+    font-size: 14px;
+    margin-top: 1px;
+}
+.ui-spinner-down:before {
+    content: "\f068";
+}
+.ui-spinner-up > :first-child,
+.ui-spinner-down > :first-child {
+    display: none;
+}
+.ui-spinner-button {
+    width: 19px;
+}
+.ui-widget-content .ui-icon {
+    background: none !important;
+}
+/* spinner both */
+.ui-spinner-input.spinner-both {
+    padding: 6px 30px;
+}
+.ui-spinner-input.spinner-both + .ui-spinner-button + .ui-spinner-button {
+    left: 0px;
+    right: auto;
+}
+.ui-spinner-input.spinner-both + .ui-spinner-button,
+.ui-spinner-input.spinner-both + .ui-spinner-button + .ui-spinner-button {
+    height: 30px;
+    width: 25px;
+}
+.ui-spinner-input.spinner-both + .ui-spinner-up:before,
+.ui-spinner-input.spinner-both + .ui-spinner-up + .ui-spinner-down:before {
+    margin-top: 8px;
+}
+
+/**
+ * 样式调整
+ */
+.rule-child-form-control {
+    padding-left: 40px;
+    /*margin-left:40px;*/
+    margin:5px 0 0 0;
+}
+.rule-child-form-control .checkbox-inline {
+    padding-left:0px;
+}
+.smart-form .nav-tabs-custom {
+    background-color:rgba(179, 190, 193, 0.08);
+}
+
+.crontab-view .list-unstyled {
+    clear: both;
+}
+
+.crontab-view .list-unstyled li {
+    float:left;
+}
+.crontab-index .list-unstyled li,
+.crontab-view .list-unstyled li {
+    margin:5px;
+}
+.crontab-btn-status {
+    cursor:pointer;
+}
+/** 不换行 */
+.white-space-normal {
+    white-space:nowrap;
+}
+/** End */
+
+.table-vertical-align-middle tr td {
+    vertical-align:middle !important;
+}
+.table-crontab-id,
+.table-crontab-concurrency,
+.table-crontab-run_user {
+    width: 60px;
+}
+.table-crontab-max_process_time {
+    width: 85px;
+}
