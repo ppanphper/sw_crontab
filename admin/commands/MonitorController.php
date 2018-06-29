@@ -112,7 +112,6 @@ class MonitorController extends Controller
                 }
             }
             $msg && $this->formatOutput($msg);
-            Yii::$app->redis->close();
             //sleep 10 sec
             sleep($interval);
         }
