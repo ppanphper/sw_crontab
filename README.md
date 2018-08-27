@@ -1,4 +1,4 @@
-Swoole-Crontab(基于Swoole扩展)
+SWC(Swoole-Crontab)分布式定时任务系统
 ==============
 1.概述
 --------------
@@ -6,11 +6,9 @@ Swoole-Crontab(基于Swoole扩展)
 + 基于swoole的定时器程序，支持秒级处理.
 + 异步多进程处理.
 + 完全兼容crontab语法，且支持秒的配置.
-+ 去中心-多客户端模式,能够横向扩展.
-+ web界面管理,增删改查任务,完整的权限控制.
-+ 环境：php5.6以上，mysql5.6以上 swoole1.10以上.
-+ 依赖：需要安装pcre,  pcre-devel(安装完成后，已经安装swoole扩展的需要重新编译swoole), openssl.
-+ 扩展依赖：redis、swoole、openssl(发告警邮件).
++ 去中心-多客户端模式，能够横向扩展.
++ web界面管理，增删改查任务，完整的权限控制.
++ 依赖：需要安装pcre，pcre-devel(安装完成后，已经安装swoole扩展的需要重新编译swoole).
 
 2.架构图
 --------------
@@ -31,9 +29,23 @@ Swoole-Crontab(基于Swoole扩展)
     |   |   |   +-------- day of month (1 - 31)
     |   |   +---------- hour (0 - 23)
     |   +------------ min (0 - 59)
-    +-------------- sec (0-59)[可省略，如果没有0位,则最小时间粒度是分钟]
+    +-------------- sec (0-59)[可省略，如果没有0位，则最小时间粒度是分钟]
+    
+5.环境要求
+--------------
+| Requirements                  | 1.0.*                         |
+|-------------------------------|-------------------------------|
+| [PHP](https://php.net)        | 5.6+                          |
+| [Mysql](https://dev.mysql.com/downloads/)| 5.6+               |
+| [Swoole](http://pecl.php.net/package/swoole)| 1.10.0+         |
+| [Redis](http://pecl.php.net/package/redis)| 2.2.8+            |
+| [PDO_Mysql](http://pecl.php.net/package/pdo_mysql)| 1.0.2+    |
+| [Openssl](https://www.openssl.org/)| 1.0+                     |
+| [Pcre](http://www.pcre.org/)| 8.0+                            |
+| [Pcre-devel](https://pkgs.org/download/pcre-devel)| 7.8+      |
+| Install with Composer...      | ~1.4                          |
 
-5.开始使用
+6.开始使用
 --------------
 1.安装环境依赖
 
@@ -46,7 +58,7 @@ Swoole-Crontab(基于Swoole扩展)
     2、mv composer.phar /usr/local/bin/composer
     3、分别进入前后端项目目录: cd /path/to/admin 和 cd /path/to/agent
     4、执行安装依赖的类库: /usr/local/bin/php /usr/local/bin/composer install
-      (期间可能需要提供GitHub的token, 自己创建一个[https://github.com/settings/tokens/new?scopes=repo&description=Composer+on+localhost.localdomain+2018-05-18+1719])
+      (期间可能需要提供GitHub的token，自己创建一个[https://github.com/settings/tokens/new?scopes=repo&description=Composer+on+localhost.localdomain+2018-05-18+1719])
       
 3.管理后台的配置文件修改
 
@@ -73,13 +85,13 @@ Swoole-Crontab(基于Swoole扩展)
         然后使用命令启动: supervisorctl start swcMonitor
     2、不使用Supervisord启动，直接使用命令: /usr/local/bin/php /path/to/admin/yii monitor; 启动supervisor会自动运行这个command
     
-6.帮助信息
+7.帮助信息
 --------------
 ```
 * Usage: /path/to/agent/agent.php start|restart|stop|reload|stats
 ```
 
-7.TODO
+8.TODO
 --------------
 - [ ] 任务工作流: 后面的任务依赖前一个任务的执行结果(任务执行顺序?)。
 - [ ] 灾难转移: 如果任务允许多台服务器执行，本次在这台服务器执行失败，可以转到其他机器再次尝试执行
