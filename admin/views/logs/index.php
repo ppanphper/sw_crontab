@@ -36,7 +36,7 @@ foreach ($codeMaps as $code => $label) {
                         ],
                         'columns'      => [
                             [
-                                'attribute'     => 'id',
+                                'attribute'      => 'id',
                                 'headerOptions' => [
                                     'width' => '100',
                                 ],

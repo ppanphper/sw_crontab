@@ -5,7 +5,7 @@ namespace app\controllers;
 use Yii;
 use app\models\Crontab;
 use app\models\searchs\Crontab as CrontabSearch;
-use yii\db\Exception;
+use \Exception;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
@@ -24,7 +24,7 @@ class CrontabController extends Controller
     {
         return [
             'verbs' => [
-                'class'   => VerbFilter::className(),
+                'class' => VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
 //                    'changeStatus' => ['POST'],
@@ -43,16 +43,14 @@ class CrontabController extends Controller
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
         return $this->render('index', [
-            'searchModel'  => $searchModel,
+            'searchModel' => $searchModel,
             'dataProvider' => $dataProvider,
         ]);
     }
 
     /**
      * Displays a single Crontab model.
-     *
      * @param string $id
-     *
      * @return mixed
      */
     public function actionView($id)
@@ -71,27 +69,26 @@ class CrontabController extends Controller
     {
         $model = new Crontab();
         $model->setScenario('create');
-
-        $loadBoolean = $model->load(Yii::$app->request->post());
+        $post = Yii::$app->request->post();
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $loadBoolean) {
+        if(Yii::$app->request->isAjax && $model->load($post)) {
 
-            Yii::$app->response->format = Response::FORMAT_JSON;
+            Yii::$app->response->format=Response::FORMAT_JSON;
             return ActiveForm::validate($model);
         }
 
-        if ($loadBoolean && $model->save()) {
+        if (Yii::$app->request->isPost && $model->saveData($post)) {
             return $this->redirect(['index']);
-        } else {
-            $model->setScenario($model::SCENARIO_DEFAULT);
-            $model->rule = '* * * * *';
-            $model->concurrency = 0;
-            $model->max_process_time = 600;
-            $model->owner = Yii::$app->user->getIdentity()->getId();
-            return $this->render('create', [
-                'model' => $model,
-            ]);
         }
+        $model->setScenario($model::SCENARIO_DEFAULT);
+        $model->rule = '* * * * *';
+        $model->concurrency = 0;
+        $model->max_process_time = 0;
+        $model->retries = 0;
+        $model->retry_interval = 10;
+        return $this->render('create', [
+            'model' => $model,
+        ]);
     }
 
     /**
@@ -105,29 +102,22 @@ class CrontabController extends Controller
     {
         $model = $this->findModel($id);
         $model->setScenario('update');
-
-        $loadBoolean = $model->load(Yii::$app->request->post());
+        $post = Yii::$app->request->post();
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $loadBoolean) {
+        if(Yii::$app->request->isAjax && $model->load($post)) {
 
-            Yii::$app->response->format = Response::FORMAT_JSON;
+            Yii::$app->response->format=Response::FORMAT_JSON;
             return ActiveForm::validate($model);
         }
 
-        if ($loadBoolean && $model->save()) {
+        if (Yii::$app->request->isPost && $model->saveData($post)) {
             return $this->redirect(['index']);
-        } else {
-            $model->setScenario($model::SCENARIO_DEFAULT);
-            if ($model->owner && is_string($model->owner)) {
-                $model->owner = explode(',', $model->owner);
-            }
-            if ($model->agents && is_string($model->agents)) {
-                $model->agents = explode(',', $model->agents);
-            }
-            return $this->render('update', [
-                'model' => $model,
-            ]);
         }
+
+        $model->setScenario($model::SCENARIO_DEFAULT);
+        return $this->render('update', [
+            'model' => $model,
+        ]);
     }
 
     /**
@@ -140,26 +130,21 @@ class CrontabController extends Controller
         if(Yii::$app->request->getIsPost()) {
             $model = new Crontab();
             $model->setScenario('create');
-            $loadBoolean = $model->load(Yii::$app->request->post());
+
+            $post = Yii::$app->request->post();
             //Ajax表单验证
-            if(Yii::$app->request->isAjax && $loadBoolean) {
+            if(Yii::$app->request->isAjax && $model->load($post)) {
 
                 Yii::$app->response->format=Response::FORMAT_JSON;
                 return ActiveForm::validate($model);
             }
 
-            if ($loadBoolean && $model->save()) {
+            if (Yii::$app->request->isPost && $model->saveData($post)) {
                 return $this->redirect(['index']);
             }
         }
         $model = $this->findModel($id);
         $model->setScenario($model::SCENARIO_DEFAULT);
-        if($model->owner && is_string($model->owner)) {
-            $model->owner = explode(',', $model->owner);
-        }
-        if($model->agents && is_string($model->agents)) {
-            $model->agents = explode(',', $model->agents);
-        }
         $model->isNewRecord = true;
         return $this->render('create', [
             'model' => $model,
@@ -183,12 +168,11 @@ class CrontabController extends Controller
         return $this->redirect(['index']);
     }
 
-    public function actionChangeStatus()
-    {
+    public function actionChangeStatus() {
         $result = [
             'status' => 0,
-            'msg'    => Yii::t('app', 'Change the failure'),
-            'data'   => []
+            'msg' => Yii::t('app','Change the failure'),
+            'data' => []
         ];
         try {
             $id = Yii::$app->request->post('id');
@@ -196,11 +180,11 @@ class CrontabController extends Controller
             $status = intval(Yii::$app->request->post('status'));
             $model->status = !$status;
             $bool = $model->save(false, ['status']);
-            if ($bool) {
+            if($bool) {
                 $result['status'] = 1;
-                $result['msg'] = Yii::t('app', 'Change the success');
+                $result['msg'] = Yii::t('app','Change the success');
                 $result['data'] = [
-                    'label'  => Yii::t('app', ($model->status ? 'Enabled' : 'Disabled')),
+                    'label' => Yii::t('app', ($model->status ? 'Enabled' : 'Disabled')),
                     'status' => intval($model->status),
                 ];
             }
@@ -212,9 +196,7 @@ class CrontabController extends Controller
     /**
      * Finds the Crontab model based on its primary key value.
      * If the model is not found, a 404 HTTP exception will be thrown.
-     *
      * @param string $id
-     *
      * @return Crontab the loaded model
      * @throws NotFoundHttpException if the model cannot be found
      */

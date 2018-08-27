@@ -14,17 +14,25 @@ use \Swoole\Table;
 
 class LoadTasks
 {
+    /**
+     * TYPE_INT 1(Mysql TINYINT): 2 ^ 8 = -128 ~ 127
+     * TYPE_INT 2(Mysql SMALLINT): 2 ^ (8 * 2) = -327689 ~ 32767
+     * TYPE_INT 4(Mysql INT): 2 ^ (8 * 4) = -2147483648 ~ 2147483647
+     * TYPE_INT 8(Mysql BIGINT): 2 ^ (8 * 8) = -9223372036854775808 ~ 9223372036854775807
+     * @var array
+     */
     private static $column = [
         'name'      => [Table::TYPE_STRING, 64], // crontab名称
         'rule'      => [Table::TYPE_STRING, 1800], // crontab规则
-        'execNum'   => [Table::TYPE_INT, 1], // 并发数
-        'maxTime'   => [Table::TYPE_INT, 8], // 最大执行时间
-        'status'    => [Table::TYPE_INT, 1], // 状态 0=停用 1=启用
+        'execNum'   => [Table::TYPE_INT, 2], // 并发数
+        'maxTime'   => [Table::TYPE_INT, 4], // 最大执行时间
+        'timeoutOpt'=> [Table::TYPE_INT, 1], // 超时选项 0=忽略 1=强杀
         'runUser'   => [Table::TYPE_STRING, 255], // 运行时用户
         'command'   => [Table::TYPE_STRING, 1536], // 命令 长度为字节 512 * 3
-        'owner'     => [Table::TYPE_STRING, 255], // 指定负责人Id字符串列表 eg:1,2,3
-        'agents'    => [Table::TYPE_STRING, 255], // 指定代理机器Id字符串列表 eg:1,2,3
-        'noticeWay' => [Table::TYPE_INT, 1], // 通知方式 1邮件 2短信 3邮件+短信 4微信 5邮件+微信 6短信+微信 7所有方式
+        'retries'   => [Table::TYPE_INT, 2], // 重试次数
+        'retryInterval' => [Table::TYPE_INT, 4], // 重试间隔
+        'noticeWay' => [Table::TYPE_INT, 1], // 通知方式 0忽略 1邮件 2短信 3邮件+短信 4微信 5邮件+微信 6短信+微信 7所有方式
+        'updateTime' => [Table::TYPE_INT, 4], // 上一次更新时间
     ];
     private static $table;
 
@@ -41,23 +49,19 @@ class LoadTasks
      * @var array
      */
     private static $agentInfo = [];
-
-    /**
-     * @var int
-     */
-    private static $counter = 0;
-    private static $counterMax;
+    private static $updateAgentInfo = false;
 
     const T_START = 1;//正常
     const T_STOP = 0;//暂停
 
-    const RunStatusError = -1;//不符合条件，不运行
-    const RunStatusNormal = 0;//准备运行
-    const RunStatusStart = 1;//开始运行
-    const RunStatusCreateProcessSuccess = 2;//创建进程成功
-    const RunStatusCreateProcessFailed = 3;//创建进程失败
-    const RunStatusSuccess = 4;//运行成功
-    const RunStatusFailed = 5;//运行失败
+    const RUN_STATUS_ERROR = -1;//不符合条件，不运行
+    const RUN_STATUS_NORMAL = 0;//准备运行
+    const RUN_STATUS_START = 1;//开始运行
+    const RUN_STATUS_CREATE_PROCESS_SUCCESS = 2;//创建进程成功
+    const RUN_STATUS_CREATE_PROCESS_FAILED = 3;//创建进程失败
+    const RUN_STATUS_SUCCESS = 4;//运行成功
+    const RUN_STATUS_FAILED = 5;//运行失败
+    const RUN_STATUS_RETIRES = 6;//重试
 
     /**
      * 初始化任务表
@@ -66,8 +70,6 @@ class LoadTasks
     {
         //创建config table
         self::createConfigTable();
-        // 10分钟重新加载一次
-        self::$counterMax = intval(bcdiv(config_item('task_reload_interval', 600), config_item('monitor_reload_interval', 10)));
     }
 
     /**
@@ -86,62 +88,59 @@ class LoadTasks
     /**
      * 载入任务
      *
-     * @param array $taskIds
+     * @param array $ids 加载指定任务Id记录
      *
      * @return bool
      * @throws \Exception
      */
-    public static function load($taskIds = [])
+    public static function load($ids=[])
     {
         $db = getDBInstance();
+        // 获取节点信息
+        self::getAgentInfo();
         $offset = 0;
         $limit = 1000;
-        if (empty(self::$agentInfo)) {
-            // 查询本节点的信息
-            self::$agentInfo = $db->from('agents')->select('id')->where([
-                'ip'     => SERVER_INTERNAL_IP,
-                'port'   => SERVER_PORT,
-                'status' => 1,
-            ])->limit(1)->fetch();
-        }
-
-        $condition = [];
-        if ($taskIds) {
-            $condition['id'] = $taskIds;
-        }
+        $condition = 'a.status = :status AND (b.bid = :agentId OR b.bid IS NULL) AND a.id NOT IN (SELECT aid FROM via_table WHERE `type` = :notInAgents AND bid = :notInAgentId)';
+        $agentId = isset(self::$agentInfo['id']) ? self::$agentInfo['id'] : 0;
+        $params = [
+            ':status' => self::T_START,
+            ':agentId' => $agentId,
+            ':notInAgents' => Constants::TYPE_CRONTAB_NOT_IN_AGENTS,
+            ':notInAgentId' => $agentId,
+        ];
         while (true) {
-            $tasks = $db->from('crontab')->where($condition)->offset($offset)->limit($limit)->fetchAll();
+            /**
+             * SELECT DISTINCT a.id,a.* FROM crontab a
+             * LEFT JOIN via_table b ON a.id = b.aid AND b.type = 2
+             * WHERE (b.bid = 1 OR b.bid IS NULL)
+             * AND a.id NOT IN (SELECT aid FROM via_table WHERE `type` = 3 AND bid = 1)
+             */
+            $query = $db->from('crontab a')
+                ->select(null)
+                ->select('DISTINCT (a.id), a.*')
+                ->leftJoin('via_table b ON a.id = b.aid AND b.type = '.Constants::TYPE_CRONTAB_AGENTS);
+            if($ids) {
+                $query->where('a.id', $ids);
+            }
+            $tasks = $query->where($condition, $params)
+                ->offset($offset)
+                ->limit($limit)
+                ->fetchAll();
             if (empty($tasks)) break;
             foreach ($tasks as $task) {
-                /**
-                 * 如果没有查询到，那么就是没有登记，则只处理没有特殊指定哪台机器执行的任务
-                 * 如果该机器Id不在指定列表中，则跳过
-                 *
-                 * 防止在重新加载的时候本次查询db失败，导致本节点无法执行任务
-                 */
-                if (!empty($task['agents'])) {
-                    if (empty(self::$agentInfo) || !in_array(self::$agentInfo['id'], explode(',', $task['agents']))) {
-                        // 如果不在允许执行的节点列表中，要判断目前内存表是否有这条记录，如果有，就删除掉
-                        self::$table->del($task['id']);
-                        continue;
-                    }
-                }
-                // 如果不是启用状态，就删除这条记录
-                if ($task['status'] != self::T_START) {
-                    self::$table->del($task['id']);
-                } else if (count(self::$table) <= TASK_MAX_LOAD_SIZE) {
+                if (count(self::$table) <= TASK_MAX_LOAD_SIZE) {
                     self::$table->set($task['id'], [
                         'name'      => $task['name'],
                         'rule'      => $task['rule'],
-                        'cid'       => $task['cid'],
                         'execNum'   => $task['concurrency'],
                         'maxTime'   => $task['max_process_time'],
-                        'status'    => $task['status'],
+                        'timeoutOpt'=> $task['timeout_opt'],
                         'runUser'   => $task['run_user'],
                         'command'   => $task['command'],
-                        'owner'     => $task['owner'],
-                        'agents'    => $task['agents'],
+                        'retries'   => $task['retries'],
+                        'retryInterval' => $task['retry_interval'],
                         'noticeWay' => $task['notice_way'],
+                        'updateTime' => $task['update_time'],
                     ]);
                 }
             }
@@ -157,22 +156,50 @@ class LoadTasks
     /**
      * 监听数据库是否有变更，如果变更，就重新加载任务到内存表
      */
-    public static function monitorReload()
-    {
+    public static function monitorReload() {
+        $redisObject = RedisClient::getInstance();
+        // 节点信息是否有变更
+        self::$updateAgentInfo = $redisObject->get(Constants::REDIS_KEY_AGENT_CHANGE_MD5.SERVER_INTERNAL_IP.'_'.SERVER_PORT);
         try {
-            $redisObject = RedisClient::getInstance();
-            $md5 = $redisObject->get(Constants::REDIS_KEY_CRONTAB_CHANGE_MD5);
             /**
-             * 如果 数据有变更 或者 每间隔1小时 就重新加载一次
+             * 如果节点状态(停用、删除)有变更就清除所有任务，并重新加载一次(只加载未指定节点执行的任务)
              */
-            if (($md5 !== false && self::$crontabMD5 !== $md5) || self::$counter > self::$counterMax) {
-                self::load();
-                self::$counter = 0;
+            if(self::$updateAgentInfo) {
+                return self::load();
             }
-
-            self::$counter++;
+            $md5 = $redisObject->get(Constants::REDIS_KEY_CRONTAB_CHANGE_MD5);
+            if($md5 !== false && self::$crontabMD5 !== $md5 && ($data = $redisObject->hGetAll(Constants::REDIS_KEY_HASH_CRONTAB_CHANGE))) {
+                $ids = $hashDelFields = [];
+                // 如果域记录时间与当前时间相差10分钟，就删除，以免无效记录过多
+                $invalidRecordTime = time() - Constants::REDIS_KEY_HASH_CRONTAB_CHANGE_FIELD_EXPIRE;
+                foreach($data as $id => $updateTime) {
+                    $prevUpdateTime = self::$table->get($id,['updateTime']);
+                    // 如果不存在这个任务，或者更新时间大于上次更新时间
+                    if(!$prevUpdateTime && $updateTime > $prevUpdateTime) {
+                        $ids[] = $id;
+                        self::$table->del($id);
+                    }
+                    if($invalidRecordTime >= $updateTime) {
+                        $hashDelFields[] = $id;
+                    }
+                }
+                // 重新加载指定Id记录
+                if($ids) {
+                    try {
+                        self::load($ids);
+                    } catch (\Exception $e) {
+                        log_warning(__METHOD__.' Error = '.$e->getMessage());
+                    }
+                }
+                // 删除过期域记录
+                if($hashDelFields) {
+                    array_unshift($hashDelFields, Constants::REDIS_KEY_HASH_CRONTAB_CHANGE);
+                    // call_user_func_array([$redisObject, 'hdel'], $hashDelFields);
+                    $redisObject->hdel(...$hashDelFields);
+                }
+            }
         } catch (\Exception $e) {
-            Server::formatOutput(__METHOD__ .' 监控重载失败 = '.$e->getMessage());
+            log_warning(__METHOD__.' Error = '.$e->getMessage());
         }
     }
 
@@ -189,5 +216,53 @@ class LoadTasks
     public static function merge_spaces($string)
     {
         return preg_replace('/\s(?=\s)/', '\\1', $string);
+    }
+
+    /**
+     * 获取节点信息
+     *
+     * @return array|mixed
+     */
+    public static function getAgentInfo() {
+        if (empty(self::$agentInfo) || self::$updateAgentInfo) {
+            try {
+                $db = getDBInstance();
+                // 查询本节点的信息
+                self::$agentInfo = $db->from('agents')->where([
+                    'ip'     => SERVER_INTERNAL_IP,
+                    'port'   => SERVER_PORT,
+                    'status' => 1,
+                ])->limit(1)->fetch();
+                if(self::$updateAgentInfo) {
+                    $redisObject = RedisClient::getInstance();
+                    // 删除已经处理的通知
+                    $redisObject->del(Constants::REDIS_KEY_AGENT_CHANGE_MD5.SERVER_INTERNAL_IP.'_'.SERVER_PORT);
+                    self::$updateAgentInfo = false;
+                    // 节点已停用，需要把所有的任务都删除, 然后再加载没有指定节点执行的任务
+                    if(!self::$agentInfo && count(self::$table) > 0) {
+                        foreach(self::$table as $taskId=>$task) {
+                            self::$table->del($taskId);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                log_error(__METHOD__ . ' Error: '.$e->getMessage());
+            }
+        }
+        return self::$agentInfo;
+    }
+
+    /**
+     * 获取节点名称
+     * 此处不作查询逻辑，防止因为查询导致异步进程受影响
+     *
+     * @return string
+     */
+    public static function getAgentName() {
+        $agentName = SERVER_INTERNAL_IP.':'.SERVER_PORT;
+        if(self::$agentInfo) {
+            $agentName = SERVER_INTERNAL_IP.':'.SERVER_PORT.'('.self::$agentInfo['name'].')';
+        }
+        return $agentName;
     }
 }

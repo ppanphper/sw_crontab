@@ -13,7 +13,7 @@ use yii\widgets\ActiveForm;
 /* @var $model app\models\User */
 $userIdentity = Yii::$app->user->identity;
 
-$this->title = Yii::t('app', 'Change password') . ': ' . $userIdentity->username;
+$this->title = Yii::t('app', 'Change password') .': ' . $userIdentity->username;
 $this->params['breadcrumbs'][] = ['label' => Yii::t('app', 'Users'), 'url' => ['index']];
 $this->params['breadcrumbs'][] = ['label' => $userIdentity->username, 'url' => ['view', 'id' => $userIdentity->id]];
 $this->params['breadcrumbs'][] = Yii::t('app', 'Update');
@@ -26,23 +26,23 @@ $this->params['breadcrumbs'][] = Yii::t('app', 'Update');
                 <!-- Horizontal Form -->
                 <div class="box box-info table-responsive">
                     <div class="box-header with-border">
-                        <h3 class="box-title"><?= $this->title ?></h3>
+                        <h3 class="box-title"><?=$this->title?></h3>
                     </div>
                     <!-- /.box-header -->
                     <!-- form start -->
                     <?php $form = ActiveForm::begin([
-                        'options'    => [
+                        'options'=> [
                             'class' => 'form-horizontal',
                         ],
                         'fieldClass' => 'app\widgets\ActiveField'
                     ]); ?>
 
                     <div class="box-body">
-                        <?= $form->field($model, 'password')->passwordInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the original password')]) ?>
+                        <?= $form->field($model, 'password')->passwordInput(['maxlength' => true, 'placeholder'=>Yii::t('app','Please enter the original password')]) ?>
 
-                        <?= $form->field($model, 'newPassword')->passwordInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the new password')]) ?>
+                        <?= $form->field($model, 'newPassword')->passwordInput(['maxlength' => true, 'placeholder'=>Yii::t('app','Please enter the new password')]) ?>
 
-                        <?= $form->field($model, 'confirmPassword')->passwordInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the confirm password')]) ?>
+                        <?= $form->field($model, 'confirmPassword')->passwordInput(['maxlength' => true, 'placeholder'=>Yii::t('app','Please enter the confirm password')]) ?>
                     </div>
 
                     <div class="box-footer">

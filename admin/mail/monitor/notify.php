@@ -7,7 +7,7 @@
  */
 
 use app\helpers\TimeHelper;
-
+use app\models\Agents;
 ?>
 <style type="text/css">
     body {
@@ -168,9 +168,10 @@ use app\helpers\TimeHelper;
 <table class="table table-hover" id="use-rate-table">
     <thead>
     <tr>
-        <th>节点</th>
-        <th>最后上报时间</th>
-        <th>离线时长</th>
+        <th><?= Yii::t('app', 'Agents');?></th>
+        <th><?= Yii::t('app', 'Final heartbeat time');?></th>
+        <th><?= Yii::t('app', 'The offline time');?></th>
+        <th><?= Yii::t('app', 'Agent Status');?></th>
     </tr>
     </thead>
     <tbody>
@@ -179,8 +180,9 @@ use app\helpers\TimeHelper;
         ?>
         <tr>
             <td><?= $item['ip'].':'.$item['port'] ?></td>
-            <td><?= Yii::$app->formatter->asDatetime($item['time']) ?></td>
+            <td><?= $item['last_report_time'] ? Yii::$app->formatter->asDatetime($item['last_report_time']) : ''; ?></td>
             <td><?= TimeHelper::msTimeFormat($item['offlineTime']) ?></td>
+            <td><?= Yii::t('app', ($item['agent_status'] == Agents::AGENT_STATUS_OFFLINE ? 'Offline' : 'No heartbeat, but the nodes are normal')); ?></td>
         </tr>
         <?php
     }

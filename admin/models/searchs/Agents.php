@@ -16,13 +16,21 @@ class Agents extends AgentsModel
     public $categoryId;
 
     /**
+     * 是否是搜索状态
+     * @var bool
+     */
+    public $isSearched = false;
+
+    /**
      * @inheritdoc
      */
     public function rules()
     {
         return [
-            [['id', 'port', 'status', 'categoryId'], 'integer'],
+            [['id', 'port', 'agent_status', 'categoryId'], 'integer'],
             [['name', 'ip'], 'safe'],
+            // 1.0.0.0 ~ 255.255.255.255
+            ['ip', 'match', 'pattern' => '/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$/'],
         ];
     }
 
@@ -44,7 +52,7 @@ class Agents extends AgentsModel
      */
     public function search($params)
     {
-        $query = AgentsModel::find()->joinWith(['category']);
+        $query = AgentsModel::find()->alias('a');
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
@@ -58,18 +66,40 @@ class Agents extends AgentsModel
             return $dataProvider;
         }
 
+        // 是否有查询条件
+        $attributes = $this->getAttributes();
+        foreach ($attributes as $item) {
+            if ($item !== '' && $item !== null) {
+                $this->isSearched = true;
+                break;
+            }
+        }
+
+        if($this->categoryId) {
+            $this->isSearched = true;
+        }
+
+        $query->where(['<>', 'a.status', -1]);
+
         // grid filtering conditions
         $query->andFilterWhere([
-            'id'          => $this->id,
-            'port'        => $this->port,
-            'status'      => $this->status,
-            'category.id' => $this->categoryId
+            'a.id'           => $this->id,
+            'a.port'         => $this->port,
+            'a.status'       => $this->status,
+            'a.agent_status' => $this->agent_status,
         ]);
 
-        $query->andFilterWhere(['like', 'name', $this->name])
-            ->andFilterWhere(['like', 'ip', $this->ip]);
+        $query->select([
+            'DISTINCT(a.id)',
+            'a.*',
+        ])->joinWith(['category']);
+        $query->andFilterWhere([
+            'b.bid' => $this->categoryId,
+        ]);
+        $dataProvider->totalCount = $query->count('DISTINCT a.id');
 
-        $dataProvider->totalCount = $query->count('DISTINCT agents.id');
+        $query->andFilterWhere(['like', 'a.name', $this->name])
+            ->andFilterWhere(['like', 'a.ip', $this->ip]);
 
         return $dataProvider;
     }

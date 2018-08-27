@@ -7,6 +7,7 @@
 
 namespace app\assets;
 
+use Yii;
 use yii\web\AssetBundle;
 use yii\web\View;
 
@@ -24,6 +25,7 @@ class AppAsset extends AssetBundle
         'css/site.css',
     ];
     public $js = [
+        'js/bootbox.min.js',
         'js/common.js',
     ];
     public $depends = [
@@ -31,25 +33,44 @@ class AppAsset extends AssetBundle
         'yii\bootstrap\BootstrapAsset',
     ];
 
+    public function registerAssetFiles($view)
+    {
+        parent::registerAssetFiles($view);
+        $view->registerJs('
+            yii.confirm = function(message, ok, cancel) {
+                bootbox.confirm(message, function(result) {
+                    if (result) { !ok || ok(); } else { !cancel || cancel(); }
+                });
+            }
+        ');
+        if (Yii::$app->language !== null) {
+            $view->registerJs('
+            bootbox.addLocale("'.Yii::$app->language.'", {
+                OK : "'.Yii::t('app', 'OK').'",
+                CANCEL : "'.Yii::t('app', 'Cancel').'",
+                CONFIRM : "'.Yii::t('app', 'Confirm').'",
+            });
+            bootbox.setLocale("'.Yii::$app->language.'");
+            ');
+        }
+    }
+
     /**
      * 定义按需加载JS方法，注意加载顺序在最后
      *
      * @param View $view
      * @param $jsFile
      */
-    public static function addScript(View $view, $jsFile)
-    {
+    public static function addScript(View $view, $jsFile) {
         $view->registerJsFile($jsFile, [AppAsset::className(), 'depends' => 'app\assets\AppAsset']);
     }
 
     /**
      * 定义按需加载css方法，注意加载顺序在最后
-     *
      * @param View $view
      * @param $cssFile
      */
-    public static function addCss(View $view, $cssFile)
-    {
+    public static function addCss(View $view, $cssFile) {
         $view->registerCssFile($cssFile, [AppAsset::className(), 'depends' => 'app\assets\AppAsset']);
     }
 }

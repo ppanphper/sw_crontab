@@ -17,9 +17,9 @@ $this->params['breadcrumbs'][] = $this->title;
         <?= Html::a(Yii::t('app', 'Update'), ['update', 'id' => $model->id], ['class' => 'btn btn-primary']) ?>
         <?= Html::a(Yii::t('app', 'Delete'), ['delete', 'id' => $model->id], [
             'class' => 'btn btn-danger',
-            'data'  => [
+            'data' => [
                 'confirm' => Yii::t('app', 'Are you sure you want to delete this item?'),
-                'method'  => 'post',
+                'method' => 'post',
             ],
         ]) ?>
     </p>
@@ -27,12 +27,12 @@ $this->params['breadcrumbs'][] = $this->title;
         <div class="col-md-6">
             <div class="box table-responsive">
                 <div class="box-header with-border">
-                    <h3 class="box-title"><?= $this->title; ?></h3>
+                    <h3 class="box-title"><?= $this->title;?></h3>
                 </div>
                 <!-- /.box-header -->
                 <div class="box-body">
                     <?= DetailView::widget([
-                        'model'      => $model,
+                        'model' => $model,
                         'attributes' => [
                             'id',
                             'username',
@@ -40,12 +40,12 @@ $this->params['breadcrumbs'][] = $this->title;
                             'mobile',
                             'email:email',
                             [
-                                'format'     => 'html',
-                                'label'      => Yii::t('app', 'Status'),
+                                'format' => 'html',
+                                'label' => Yii::t('app', 'Status'),
                                 'attributes' => 'status',
-                                'value'      => function ($model) {
-                                    if ($model->status == User::STATUS_INACTIVE) return '<span class="label label-danger">' . Yii::t('app', 'Disabled') . '</span>';
-                                    if ($model->status == User::STATUS_ACTIVE) return '<span class="label label-success">' . Yii::t('app', 'Enabled') . '</span>';
+                                'value' => function($model) {
+                                    if($model->status == User::STATUS_INACTIVE) return '<span class="label label-danger">'.Yii::t('app','Disabled').'</span>';
+                                    if($model->status == User::STATUS_ACTIVE) return '<span class="label label-success">'.Yii::t('app','Enabled').'</span>';
                                 }
                             ],
                             'create_time:datetime',

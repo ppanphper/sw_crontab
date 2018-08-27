@@ -227,15 +227,17 @@ a.desc:after {
     background-color:rgba(179, 190, 193, 0.08);
 }
 
-.crontab-view .list-unstyled {
+.grid-view .list-unstyled,
+.detail-view .list-unstyled {
     clear: both;
 }
 
-.crontab-view .list-unstyled li {
+.grid-view .list-unstyled li,
+.detail-view .list-unstyled li {
     float:left;
 }
-.crontab-index .list-unstyled li,
-.crontab-view .list-unstyled li {
+.grid-view .list-unstyled li,
+.detail-view .list-unstyled li {
     margin:5px;
 }
 .crontab-btn-status {
@@ -258,3 +260,8 @@ a.desc:after {
 .table-crontab-max_process_time {
     width: 85px;
 }
+.border-top-none {border-top:none;!important;}
+.mt-20 {margin-top:20px;}
+.cursor-pointer {cursor:pointer;}
+.font-bold {font-weight: bold;}
+.mar-5 {margin:5px;}

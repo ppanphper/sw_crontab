@@ -11,7 +11,7 @@ use app\models\User;
 $this->title = Yii::t('app', 'Users');
 $this->params['breadcrumbs'][] = $this->title;
 ?>
-<h1><?= $this->title; ?></h1>
+<h1><?=$this->title;?></h1>
 <div class="user-index">
     <div class="row">
         <div class="col-xs-12">
@@ -25,8 +25,8 @@ $this->params['breadcrumbs'][] = $this->title;
                 <div class="box-body">
                     <?= GridView::widget([
                         'dataProvider' => $dataProvider,
-                        'filterModel'  => $searchModel,
-                        'columns'      => [
+                        'filterModel' => $searchModel,
+                        'columns' => [
                             'id',
                             'username',
                             'nickname',
@@ -34,15 +34,15 @@ $this->params['breadcrumbs'][] = $this->title;
                             'email:email',
                             // 状态
                             [
-                                'format'    => 'html', // 此列内容输出时不会被转义
-                                'filter'    => [ // 过滤器，也就是搜索框。该值为数组时会显示一个下拉框（dropdown list）
-                                    User::STATUS_INACTIVE => Yii::t('app', 'Disabled'),
-                                    User::STATUS_ACTIVE   => Yii::t('app', 'Enabled'),
+                                'format' => 'html', // 此列内容输出时不会被转义
+                                'filter' => [ // 过滤器，也就是搜索框。该值为数组时会显示一个下拉框（dropdown list）
+                                    User::STATUS_INACTIVE => Yii::t('app','Disabled'),
+                                    User::STATUS_ACTIVE => Yii::t('app','Enabled'),
                                 ],
                                 'attribute' => 'status', // 字段名
-                                'value'     => function ($model) { // 该列内容
-                                    if ($model->status == User::STATUS_INACTIVE) return '<span class="label label-danger">' . Yii::t('app', 'Disabled') . '</span>';
-                                    if ($model->status == User::STATUS_ACTIVE) return '<span class="label label-success">' . Yii::t('app', 'Enabled') . '</span>';
+                                'value' => function ($model) { // 该列内容
+                                    if($model->status == User::STATUS_INACTIVE) return '<span class="label label-danger">'.Yii::t('app','Disabled').'</span>';
+                                    if($model->status == User::STATUS_ACTIVE) return '<span class="label label-success">'.Yii::t('app','Enabled').'</span>';
                                 },
                             ],
                             'update_time:datetime',

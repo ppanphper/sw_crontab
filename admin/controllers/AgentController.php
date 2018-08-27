@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use app\config\Constants;
 use app\models\AgentsCategory;
+use app\models\ViaTable;
 use Yii;
 use app\models\Agents;
 use app\models\searchs\Agents as AgentsSearch;
@@ -26,7 +27,7 @@ class AgentController extends Controller
         $behaviors = parent::behaviors();
         return array_merge($behaviors, [
             'verbs' => [
-                'class'   => VerbFilter::className(),
+                'class' => VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
                 ],
@@ -44,16 +45,14 @@ class AgentController extends Controller
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
         return $this->render('index', [
-            'searchModel'  => $searchModel,
+            'searchModel' => $searchModel,
             'dataProvider' => $dataProvider,
         ]);
     }
 
     /**
      * Displays a single Agents model.
-     *
      * @param integer $id
-     *
      * @return mixed
      */
     public function actionView($id)
@@ -73,9 +72,9 @@ class AgentController extends Controller
         $model = new Agents();
         $post = Yii::$app->request->post();
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $model->load($post)) {
+        if(Yii::$app->request->isAjax && $model->load($post)) {
 
-            Yii::$app->response->format = Response::FORMAT_JSON;
+            Yii::$app->response->format=Response::FORMAT_JSON;
             return ActiveForm::validate($model);
         }
 
@@ -92,9 +91,7 @@ class AgentController extends Controller
     /**
      * Updates an existing Agents model.
      * If update is successful, the browser will be redirected to the 'view' page.
-     *
      * @param integer $id
-     *
      * @return mixed
      */
     public function actionUpdate($id)
@@ -102,9 +99,9 @@ class AgentController extends Controller
         $model = $this->findModel($id);
         $post = Yii::$app->request->post();
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $model->load($post)) {
+        if(Yii::$app->request->isAjax && $model->load($post)) {
 
-            Yii::$app->response->format = Response::FORMAT_JSON;
+            Yii::$app->response->format=Response::FORMAT_JSON;
             return ActiveForm::validate($model);
         }
         if ($model->saveData($post)) {
@@ -119,20 +116,23 @@ class AgentController extends Controller
     /**
      * Deletes an existing Agents model.
      * If deletion is successful, the browser will be redirected to the 'index' page.
-     *
      * @param integer $id
-     *
      * @return mixed
      */
     public function actionDelete($id)
     {
         $model = $this->findModel($id);
-        // 把关联记录删除掉
-        $model->on($model::EVENT_AFTER_DELETE, function ($event) {
-            $id = $event->data->id;
-            AgentsCategory::deleteAll(['aid' => $id]);
-        }, $model);
-        $model->delete();
+        // 标记为删除
+        $model->status = -1;
+        $model->save(false, ['status']);
+
+//		$model = $this->findModel($id);
+//		// 把关联记录删除掉
+//		$model->on($model::EVENT_AFTER_DELETE, function($event) {
+//			$id = $event->data->id;
+//			ViaTable::deleteAll(['aid'=>$id, 'type' => ViaTable::TYPE_AGENTS_CATEGORY]);
+//		}, $model);
+//		$model->delete();
 
         return $this->redirect(['index']);
     }
@@ -140,9 +140,7 @@ class AgentController extends Controller
     /**
      * Finds the Agents model based on its primary key value.
      * If the model is not found, a 404 HTTP exception will be thrown.
-     *
      * @param integer $id
-     *
      * @return Agents the loaded model
      * @throws NotFoundHttpException if the model cannot be found
      */

@@ -10,17 +10,27 @@
 namespace Libs;
 
 use \Swoole\Table as SwooleTable;
+use \Swoole\Process as SwooleProcess;
 
 class Tasks
 {
     public static $table;
 
+    /**
+     * TYPE_INT 1(Mysql TINYINT): 2 ^ 8 = -128 ~ 127
+     * TYPE_INT 2(Mysql SMALLINT): 2 ^ (8 * 2) = -327689 ~ 32767
+     * TYPE_INT 4(Mysql INT): 2 ^ (8 * 4) = -2147483648 ~ 2147483647
+     * TYPE_INT 8(Mysql BIGINT): 2 ^ (8 * 8) = -9223372036854775808 ~ 9223372036854775807
+     * @var array
+     */
     private static $column = [
-        "minute"    => [SwooleTable::TYPE_INT, 8], // 分钟
-        "sec"       => [SwooleTable::TYPE_INT, 8], // 哪一秒执行
-        "id"        => [SwooleTable::TYPE_INT, 8], // crontab Id
-        "runId"     => [SwooleTable::TYPE_INT, 8],
-        "runStatus" => [SwooleTable::TYPE_INT, 1],
+        'minute'    => [SwooleTable::TYPE_INT, 8], // 分钟
+        'sec'       => [SwooleTable::TYPE_INT, 8], // 哪一秒执行
+        'taskId'    => [SwooleTable::TYPE_INT, 8], // crontab Id
+        'runId'     => [SwooleTable::TYPE_INT, 8],
+        'runStatus' => [SwooleTable::TYPE_INT, 1],
+        'pid'       => [SwooleTable::TYPE_INT, 4], // 进程Id，用于超时强制kill
+        'retries'   => [SwooleTable::TYPE_INT, 2], // 重试次数，重试了几次
     ];
 
     /**
@@ -48,14 +58,13 @@ class Tasks
             $minute = date('YmdHi', strtotime('+1 minutes'));
             $time = strtotime($minute);
             foreach ($loadTaskTable as $id => $task) {
-                if ($task["status"] != LoadTasks::T_START) continue;
                 // 解析crontab规则
                 $ret = ParseCrontab::parse($task["rule"], $time);
                 if ($ret === false) {
                     log_error(ParseCrontab::$error);
                     continue;
                 }
-                if (empty($ret)) {
+                if(empty($ret)) {
                     continue;
                 }
 
@@ -64,80 +73,77 @@ class Tasks
                     $runId = Donkeyid::getInstance()->dk_get_next_id();
                     // 插入到任务内存表
                     self::$table->set($runId, [
-                        "minute"    => $minute,
-                        "sec"       => $time + $sec,
-                        "id"        => $id,
-                        "runStatus" => LoadTasks::RunStatusNormal
+                        'minute' => $minute,
+                        'sec' => $time + $sec,
+                        'taskId' => $id,
+                        'runStatus' => LoadTasks::RUN_STATUS_NORMAL,
+                        'retries' => 0,
                     ]);
                 }
             }
         }
-        self::clean();
         return true;
     }
 
     /**
      * 清理已执行过的任务
      */
-    private static function clean()
+    public static function clean()
     {
-        $ids = [];
-        $ids2 = [];
         if (count(self::$table) > 0) {
             // 超时则把运行中的数量-1
             $loadTasks = LoadTasks::getTable();
             $currentTime = time();
+            $timeOutFailedMap = [
+                LoadTasks::RUN_STATUS_START => 1,
+                LoadTasks::RUN_STATUS_CREATE_PROCESS_SUCCESS => 1,
+                LoadTasks::RUN_STATUS_ERROR => 1
+            ];
+            // 遍历Tasks内存表，不是LoadTasks内存表
             foreach (self::$table as $runId => $task) {
-                // 如果任务已经被删除
-                $maxTime = $loadTasks->get($task['id'], 'maxTime');
-                // key不存在会返回false
-                if ($maxTime === false) {
-                    $ids[] = $runId;// runId
-                    continue;
-                }
-                $maxTime = intval($maxTime);
                 // 当前时间小于任务执行时间则跳过
-                if ($currentTime < $task['sec']) {
+                if($currentTime < $task['sec']) {
                     continue;
                 }
-                if ($task["runStatus"] == LoadTasks::RunStatusSuccess || $task["runStatus"] == LoadTasks::RunStatusFailed) {
-                    $ids[] = $runId;// runId
+                // 如果任务已经被删除
+                $taskInfo = $loadTasks->get($task['taskId']);
+                // key不存在会返回false
+                if($taskInfo === false) {
+                    self::$table->del($runId);
+                    continue;
+                }
+                $maxTime = intval($taskInfo['maxTime']);
+                if ($task['runStatus'] == LoadTasks::RUN_STATUS_SUCCESS || $task['runStatus'] == LoadTasks::RUN_STATUS_FAILED) {
+                    self::$table->del($runId);
                     continue;
                 }
                 // 超时
                 if ($maxTime > 0 && ($currentTime - $task['sec']) > $maxTime) {
-                    $ids[] = $runId; // runId
-                    if ($task["runStatus"] == LoadTasks::RunStatusStart
-                        || $task["runStatus"] == LoadTasks::RunStatusCreateProcessSuccess
-                        || $task["runStatus"] == LoadTasks::RunStatusError) {
-                        if (empty($task['runId'])) {
+                    $msg = '最大执行时间: ' . msTimeFormat($maxTime).PHP_EOL;
+
+                    if (isset($timeOutFailedMap[$task['runStatus']])) {
+                        if(empty($task['runId'])) {
                             $task['runId'] = $runId;
                         }
-                        $task['maxTime'] = $maxTime;
-                        $ids2[] = $task;
-                    }
-                }
-            }
-            if ($ids) {
-                // 删除
-                foreach ($ids as $runId) {
-                    self::$table->del($runId);
-                }
-            }
-            if ($ids2) {
-                $redisObject = RedisClient::getInstance();
-                $dateFormat = config_item('default_date_format', 'Y-m-d H:i:s');
-                foreach ($ids2 as $item) {
-                    $msg = '指定执行时间: ' . date($dateFormat, $item['sec']);
-                    DbLog::log($item['runId'], $item['id'], Constants::CUSTOM_CODE_EXEC_TIMEOUT, '任务执行超时', $msg);
 
-                    $task = $loadTasks->get($item['id']);
-                    // 如果是限制了并发数的任务
-                    if ($task && $task['execNum']) {
-                        $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $item['taskId'] . ':' . $item['sec'];
-                        // 任务执行并发数减一
-                        $redisObject->evalScript('decr_exist', $redisKey);
+                        // 如果是限制了并发数的任务
+                        if($taskInfo['execNum']) {
+                            $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $task['taskId'] . ':' . $task['sec'];
+                            $redisObject = RedisClient::getInstance();
+                            // 任务执行并发数减一
+                            $redisObject->evalScript('decr_exist', $redisKey);
+                        }
+
+                        // 如果超时选项是强杀, 并且进程存在
+                        if($taskInfo['timeoutOpt'] == Constants::TIME_OUT_OPT_KILL) {
+                            if(Process::getTable()->exist($task['pid']) &&  SwooleProcess::kill($task['pid'], 0)) {
+                                $msg .= '强制终止进程';
+                                SwooleProcess::kill($task['pid'], SIGKILL);
+                            }
+                        }
                     }
+
+                    DbLog::log($task['runId'], $task['taskId'], Constants::CUSTOM_CODE_EXEC_TIMEOUT, '任务执行超时', $msg);
                 }
             }
         }
@@ -154,13 +160,11 @@ class Tasks
             $min = date("YmdHi");
             $time = time();
             foreach (self::$table as $runId => $task) {
-                if ($min == $task["minute"]) {
-                    if ($time == $task["sec"] && $task["runStatus"] == LoadTasks::RunStatusNormal) {
-                        $data[$runId] = [
-                            'id'  => $task['id'],
-                            'sec' => $task['sec'],
-                        ];
-                    }
+                if ($min == $task["minute"] && $time == $task["sec"] && $task["runStatus"] == LoadTasks::RUN_STATUS_NORMAL) {
+                    $data[$runId] = [
+                        'taskId' => $task['taskId'],
+                        'sec' => $task['sec'],
+                    ];
                 }
             }
         }

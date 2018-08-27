@@ -57,9 +57,11 @@ class User extends UserModel
             return $dataProvider;
         }
 
+        $query->where(['<>', 'status', -1]);
+
         // grid filtering conditions
         $query->andFilterWhere([
-            'id'     => $this->id,
+            'id' => $this->id,
             'status' => $this->status,
         ]);
 

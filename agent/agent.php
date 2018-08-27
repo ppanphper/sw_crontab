@@ -5,25 +5,23 @@
  * Date: 2018/4/23
  * Time: 下午2:54
  */
-
 namespace Agent;
 
 use function Libs\config_item;
 use Libs\Loader;
-use Libs\LoadTasks;
-use Libs\Tasks;
 use Libs\Server;
-use Libs\Process;
-use Libs\Donkeyid;
 
-if (file_exists(dirname(__FILE__) . '/env.php')) include_once dirname(__FILE__) . '/env.php';//载入环境变量
+if (file_exists(dirname(__FILE__).'/env.php'))
+    $envInit = include(dirname(__FILE__).'/env.php');//载入环境变量
+
+mb_internal_encoding('UTF-8');
 
 define('ROOT_PATH', __DIR__ . '/');
 define('LIBS_PATH', ROOT_PATH . 'Libs/');
 define('CONFIG_PATH', ROOT_PATH . 'Config/');
 define('LOGS_PATH', ROOT_PATH . 'Logs/');
-define('TPL_PATH', ROOT_PATH . 'Tpl/');
-define('ENVIRONMENT', !empty($envInit['env']) ? $envInit['env'] : 'prod');
+define('TPL_PATH', ROOT_PATH. 'Tpl/');
+define('ENVIRONMENT', ! empty($envInit['env']) ? $envInit['env'] : 'prod');
 
 //重定向PHP错误日志到logs目录
 ini_set('error_log', LOGS_PATH . '/php_errors.log');
@@ -53,17 +51,12 @@ if (!class_exists('Agent\\Libs\\Loader')) {
 require __DIR__ . '/vendor/autoload.php';
 
 Server::setPidFile(LOGS_PATH . '/agent_' . config_item('server_listen_port', 8901) . '.pid');
-Server::setStatsPidFile(LOGS_PATH . '/agent_' . config_item('server_listen_port', 8901) . '_stats.pid');
+Server::setStatsPidFile(LOGS_PATH . '/agent_' . config_item('server_listen_port', 8901).'_stats.pid');
 Server::init();
 Server::start(function ($opt) {
 
     $listenHost = config_item('server_listen_host', '0.0.0.0');
     $listenPort = config_item('server_listen_port', 8901);
-
-    LoadTasks::init();// 载入crontab表符合条件的记录
-    Donkeyid::init();//初始化donkeyid对象
-    Process::init();//载入任务进程处理表，目前有哪些进程在执行任务
-    Tasks::init();// 载入任务表，当前这一分钟要执行的任务
 
     $server = new Server($listenHost, $listenPort);
     $server->setServerName("AgentServer");

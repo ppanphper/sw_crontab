@@ -2,10 +2,12 @@
 
 namespace app\models\searchs;
 
+use app\config\Constants;
 use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use app\models\Crontab as CrontabModel;
+use app\models\ViaTable;
 
 /**
  * Crontab represents the model behind the search form about `app\models\Crontab`.
@@ -13,13 +15,40 @@ use app\models\Crontab as CrontabModel;
 class Crontab extends CrontabModel
 {
     /**
+     * 是否是搜索状态
+     * @var bool
+     */
+    public $isSearched = false;
+
+    /**
+     * 节点信息
+     * @var null
+     */
+    public $agentInfo = null;
+
+    /**
+     * 搜索的节点Id
+     * @var
+     */
+    public $agentId;
+
+    /**
+     * 搜索的负责人Id
+     * @var
+     */
+    public $ownerId;
+
+    /**
      * @inheritdoc
      */
     public function rules()
     {
         return [
-            [['id', 'cid', 'concurrency', 'status'], 'integer'],
-            [['name', 'rule', 'command', 'run_user', 'owner', 'agents', 'create_time', 'update_time'], 'safe'],
+            [['id', 'cid', 'concurrency', 'max_process_time', 'status', 'ownerId', 'agentId'], 'integer'],
+            [['name', 'rule', 'command', 'run_user', 'create_time', 'update_time'], 'safe'],
+            // 判断最大长度
+            [['max_process_time', 'concurrency'], 'number', 'min' => 0, 'max' => 99999999],
+            [['status'], 'number', 'min' => 0, 'max' => 1],
         ];
     }
 
@@ -41,7 +70,7 @@ class Crontab extends CrontabModel
      */
     public function search($params)
     {
-        $query = CrontabModel::find()->where(['<>', 'status', -1]);
+        $query = CrontabModel::find()->alias('a');
 
         // add conditions that should always apply here
 
@@ -57,22 +86,71 @@ class Crontab extends CrontabModel
             return $dataProvider;
         }
 
+        // 是否有查询条件
+        $attributes = $this->getAttributes();
+        foreach($attributes as $item) {
+            if($item !== '' && $item !== null) {
+                $this->isSearched = true;
+                break;
+            }
+        }
+        $query->where(['<>', 'a.status', -1]);
+
         // grid filtering conditions
         $query->andFilterWhere([
-            'id'          => $this->id,
-            'cid'         => $this->cid,
-            'concurrency' => $this->concurrency,
-            'status'      => $this->status,
-            'create_time' => $this->create_time,
-            'update_time' => $this->update_time,
+            'a.cid' => $this->cid,
+            'a.status' => $this->status,
+            'c.bid' => $this->ownerId,
         ]);
+        $joinWith = [];
+        if($this->agentId) {
+            $joinWith[] = 'agents';
+            $query->andWhere('b.bid = :bid OR b.bid IS NULL',[
+                ':bid'=>$this->agentId
+            ]);
+            // 查询出不在这个节点运行的任务，过滤掉
+            $ids = ViaTable::find()->select('aid')->where([
+                'bid' => $this->agentId,
+                'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS,
+            ])->asArray();
+            // crontab Id 不在这些Id中
+            $query->andWhere(['NOT IN', 'a.id', $ids]);
 
-        $query->andFilterWhere(['like', 'name', $this->name])
-            ->andFilterWhere(['like', 'rule', $this->rule])
-            ->andFilterWhere(['like', 'command', $this->command])
-            ->andFilterWhere(['like', 'run_user', $this->run_user])
-            ->andFilterWhere(['like', 'owner', $this->owner])
-            ->andFilterWhere(['like', 'agents', $this->agents]);
+            $this->agentInfo = [];
+            $rows = Agents::getData();
+            if($rows) {
+                foreach($rows as $row) {
+                    // 找到这个节点的Id
+                    if($row['id'] == $this->agentId) {
+                        $field = $row['ip'].':'.$row['port'];
+                        // 获取上报的信息
+                        $this->agentInfo = Yii::$app->redis->hget(Constants::REDIS_KEY_AGENT_SERVER_LIST, $field);
+                        break;
+                    }
+                }
+            }
+        }
+        if($this->ownerId) {
+            $joinWith[] = 'owners';
+        }
+        if($joinWith) {
+            $this->isSearched = true;
+            $query->select([
+                'DISTINCT(a.id)',
+                'a.*',
+            ])->joinWith($joinWith);
+
+            $dataProvider->totalCount = $query->count('DISTINCT a.id');
+        }
+
+        if ($this->max_process_time) {
+            $query->andWhere(['>=', 'a.max_process_time', $this->max_process_time]);
+        }
+
+        $query->andFilterWhere(['like', 'a.name', $this->name])
+            ->andFilterWhere(['like', 'a.rule', $this->rule])
+            ->andFilterWhere(['like', 'a.command', $this->command])
+            ->andFilterWhere(['like', 'a.run_user', $this->run_user]);
 
         return $dataProvider;
     }

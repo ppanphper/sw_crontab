@@ -1,5 +1,4 @@
 <?php
-
 namespace app\helpers;
 
 /**
@@ -8,8 +7,7 @@ namespace app\helpers;
  * Date: 2018/5/7
  * Time: 下午5:12
  */
-class StringHelper
-{
+class StringHelper {
 
     /**
      * 超过长度截取中间字符替换为$etc

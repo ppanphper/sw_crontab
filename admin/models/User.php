@@ -198,14 +198,19 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function getData($id=null)
     {
-        $condition = [
-            'status' => self::STATUS_ACTIVE
-        ];
-        if ($id) {
-            $id = (is_string($id) && strpos($id, ',') !== false) ? explode(',', $id) : $id;
-            $condition['id'] = $id;
+        static $data = [];
+        $key = $id === null ? 'all' : md5(serialize($id));
+        if(empty($data[$key])) {
+            $condition = [
+                'status' => self::STATUS_ACTIVE
+            ];
+            if ($id) {
+                $id = (is_string($id) && strpos($id, ',') !== false) ? explode(',', $id) : $id;
+                $condition['id'] = $id;
+            }
+            $data[$key] = static::findAll($condition);
         }
-        return static::findAll($condition);
+        return $data[$key];
     }
 
     /**
@@ -215,22 +220,30 @@ class User extends ActiveRecord implements IdentityInterface
      */
     public static function getDropDownListData($id = null)
     {
-        static $data = [];
-        if(empty($data)) {
-            $rows = self::getData();
-            if (!empty($rows)) {
-                foreach ($rows as $row) {
-                    $data[$row['id']] = $row['nickname'] ?: $row['username'];
-                }
+        $data = [];
+        $rows = self::getData($id);
+        if($rows) {
+            foreach($rows as $row) {
+                $data[$row['id']] = $row['nickname'] ?: $row['username'];
             }
         }
-        $result = [];
-        $ids = [$id];
-        if(is_string($id) && strpos($id, ',') !== false) {
-            $ids = explode(',', $id);
+        if($id === null) {
+            return $data;
         }
-        foreach($ids as $id) {
-            $result[$id] = isset($data[$id]) ? $data[$id] : '未知('.$id.')';
+        $result = [];
+        if($id) {
+            $ids = [$id];
+            if(is_array($id)) {
+                $ids = $id;
+            }
+            else if(is_string($id) && strpos($id, ',') !== false) {
+                $ids = explode(',', $id);
+            }
+            foreach($ids as $id) {
+                if(isset($data[$id])) {
+                    $result[$id] = $data[$id];
+                }
+            }
         }
         return $result;
     }

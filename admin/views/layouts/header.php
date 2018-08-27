@@ -1,5 +1,4 @@
 <?php
-
 use yii\helpers\Html;
 
 /* @var $this \yii\web\View */
@@ -23,13 +22,13 @@ use yii\helpers\Html;
                 <li class="dropdown user user-menu">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                         <img src="<?= $directoryAsset ?>/img/user2-160x160.jpg" class="user-image" alt="User Image"/>
-                        <span class="hidden-xs"><?= Yii::$app->user->getIdentity() ? Yii::$app->user->getIdentity()->nickname : ''; ?></span>
+                        <span class="hidden-xs"><?= Yii::$app->user->getIdentity() ? Yii::$app->user->getIdentity()->nickname : '';?></span>
                     </a>
                     <ul class="dropdown-menu">
                         <!-- User image -->
                         <li class="user-header">
                             <img src="<?= $directoryAsset ?>/img/user2-160x160.jpg" class="img-circle" alt="User Image"/>
-                            <p><?= Yii::$app->user->getIdentity() ? Yii::$app->user->getIdentity()->nickname : ''; ?></p>
+                            <p><?= Yii::$app->user->getIdentity() ? Yii::$app->user->getIdentity()->nickname : '';?></p>
                         </li>
                         <li class="user-footer">
                             <div class="pull-left">

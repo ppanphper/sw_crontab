@@ -73,7 +73,7 @@ abstract class ServerBase
     protected $_levels = array(
         E_ERROR           => 'Error',
         E_WARNING         => 'Warning',
-//		E_PARSE						=> 'Parsing Error',
+//		E_PARSE           => 'Parsing Error',
         E_PARSE           => 'Error',
         E_NOTICE          => 'Notice',
         E_CORE_ERROR      => 'Core Error',
@@ -83,7 +83,8 @@ abstract class ServerBase
         E_USER_ERROR      => 'User Error',
         E_USER_WARNING    => 'User Warning',
         E_USER_NOTICE     => 'User Notice',
-        E_STRICT          => 'Runtime Notice'
+        E_STRICT          => 'Runtime Notice',
+        E_RECOVERABLE_ERROR => 'Fatal Error',
     );
 
     protected static $_startMethodMaps;
@@ -142,15 +143,6 @@ abstract class ServerBase
              * 1000个Worker进程 = 3GB
              */
             'buffer_output_size'       => 1024 * 1024 * 3,
-            /**
-             * 调整管道通信的内存缓存区长度。Swoole使用Unix Socket实现进程间通信。
-             * swoole的reactor线程与worker进程之间
-             * worker进程与task进程之间
-             * 都是使用unix socket进行通信的，在收发大量数据的场景下，需要启用内存缓存队列。此函数可以修改内存缓存的长度。
-             * task_ipc_mode=2/3时会使用消息队列通信不受此参数控制
-             * 管道缓存队列已满会导致reactor线程、worker进程发生阻塞
-             */
-//            'pipe_buffer_size'         => 1024 * 1024 * 32,
             'open_tcp_nodelay'         => 1,
             'heartbeat_check_interval' => 30, // 30秒检测一次心跳
             'heartbeat_idle_time'      => 180, // 3分钟客户端没有发送请求，关闭连接
@@ -176,16 +168,15 @@ abstract class ServerBase
     /**
      * 服务启动前的初始化
      */
-    public static function init()
-    {
+    public static function init() {
         self::$_startMethodMaps = [
-            'start'   => function ($serverPID, $opt) {
+            'start' => function($serverPID, $opt) {
                 //已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     exit("Server is already running.\n");
                 }
             },
-            'restart' => function ($serverPID, $opt) {
+            'restart' => function($serverPID, $opt) {
                 //已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     if (self::$beforeStopCallback) {
@@ -195,7 +186,7 @@ abstract class ServerBase
                     self::formatOutput('Stopped');
                 }
             },
-            'reload'  => function ($serverPID, $opt) {
+            'reload' => function($serverPID, $opt) {
                 if (empty($serverPID)) {
                     exit("Server is not running");
                 }
@@ -205,7 +196,7 @@ abstract class ServerBase
                 posix_kill($serverPID, SIGUSR1);
                 exit(0);
             },
-            'stop'    => function ($serverPID, $opt) {
+            'stop' => function($serverPID, $opt) {
                 if (empty($serverPID)) {
                     exit("Server is not running\n");
                 }

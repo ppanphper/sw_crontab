@@ -22,7 +22,7 @@ $(function(){
     });
 
     // 变更状态
-    $('.crontab-btn-status').click(function(){
+    $('.crontab-btn-status').on('click', function(){
         var id = $(this).parent().parent('tr').data('key');
         var value = $(this).data('value');
         var self = $(this);
@@ -51,5 +51,29 @@ $(function(){
                 }
             }
         });
+    });
+
+    // 列表页搜索新增按钮阻止事件冒泡，防止触发展开事件
+    $('.search-create-btn').on('click', function(event){
+        event.stopPropagation();
+    });
+
+    // 列表搜索重置按钮
+    $(".search-reset-btn").on('click', function(){
+        $('#search-form .form-control:not(\'select\')').each(function(k, v){
+            $(v).attr('value', '');
+        });
+        $('.search-condition select').each(function(k, v){
+            // selectize控件
+            if($(v).hasClass('selectized')) {
+                var $eleSelectize = $(v).selectize();
+                $eleSelectize[0].selectize.clear();
+            }
+            else {
+                $(this).find('option:selected').attr('selected', false);
+                $(this).find("option:eq(0)").attr("selected", true);
+            }
+        });
+        $('#search-form').submit();
     });
 });

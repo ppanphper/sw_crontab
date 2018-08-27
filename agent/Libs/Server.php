@@ -12,16 +12,17 @@ use \Swoole\Process as SwooleProcess;
 class Server extends ServerBase
 {
     const WORKER_NUM = 10;
-    const TASK_WORKER_NUM = 4;
+    const TASK_WORKER_NUM = 5;
 
     /**
      * $worker_id是一个从0 - $worker_num - 1之间的数字，表示这个Worker进程的ID
      * 所以Task进程的Id是taskWorkerId - $worker_num 到 $task_worker_num - 1之间的数字，表示这个Task Worker进程的ID
      */
     const TASK_LOAD_TASKS = 0; // 从数据库中载入所有任务，监听是否有变更
-    const TASK_PARSE_TASKS = 1;//分析所有任务，把这一分钟的任务载入任务进程
-    const TASK_GET_TASKS = 2; //每一秒获取当前可以执行的任务
-    const TASK_MANAGER_TASKS = 3;//管理task状态
+    const TASK_PARSE_TASKS = 1;// 分析所有任务，把这一分钟的任务载入任务进程
+    const TASK_CLEAN_TASKS = 2; // 清理已执行过的任务, 失败超时的任务
+    const TASK_GET_TASKS = 3; // 每一秒获取当前可以执行的任务
+    const TASK_MANAGER_TASKS = 4;// 管理task状态
 
     const WORKER_EXEC_TASKS = 0;//创建进程执行任务
 
@@ -34,6 +35,12 @@ class Server extends ServerBase
     protected $pid_file;
     // 状态进程Pid文件
     public static $statsPidFile;
+
+    // 接收数据处理方法映射数组
+    protected $receiveModeProcessMaps = array(
+        Constants::SW_CONTROL_CMD => 'controlCommand',
+        Constants::SW_API_CMD   => 'apiCommand',
+    );
 
     public function __construct($host, $port = 0, $ssl = false)
     {
@@ -64,6 +71,13 @@ class Server extends ServerBase
                     });
                 });
             },
+            // 清理已执行过的任务, 失败超时的任务
+            self::TASK_CLEAN_TASKS   => function ($server) {
+                $this->setProcessName("Task|CleanTask");
+                $server->tick(60000, function () use ($server) {
+                    Tasks::clean();
+                });
+            },
             // 获取这一秒要执行的任务，转发给执行任务的worker进程(task进程不支持asyncIo, 无法监听管道是否可读)
             self::TASK_GET_TASKS     => function ($server) {
                 $this->setProcessName("Task|SendWorker");
@@ -87,11 +101,10 @@ class Server extends ServerBase
         ];
     }
 
-    public static function init()
-    {
+    public static function init() {
         parent::init();
         self::$_startMethodMaps = array_merge(self::$_startMethodMaps, [
-            'stats' => function ($serverPID, $opt) {
+            'stats' => function($serverPID, $opt) {
                 if (empty($serverPID) || !is_file(self::$statsPidFile)) {
                     exit("Server is not running\n");
                 }
@@ -145,17 +158,22 @@ class Server extends ServerBase
     }
 
     /**
-     * 服务启动时做一些初始化操作
+     * 服务启动前做一些初始化操作
      *
      * @return mixed
      */
     protected function initServer()
     {
+        LoadTasks::init();// 载入crontab表符合条件的记录
+        Donkeyid::init();//初始化donkeyid对象
+        Process::init();//载入任务进程处理表，目前有哪些进程在执行任务
+        Tasks::init();// 载入任务表，当前这一分钟要执行的任务
+
         Report::init();
         $monitorAlarmProcessNum = config_item('monitor_alarm_process_num', 1);
-        for ($i = 0; $i < $monitorAlarmProcessNum; $i++) {
-            $this->sw->addProcess(new SwooleProcess(function ($process) use ($i) {
-                $process->name($this->_serverName . '|monitorAlarm|' . $i);
+        for($i=0; $i< $monitorAlarmProcessNum; $i++) {
+            $this->sw->addProcess(new SwooleProcess(function ($process) use($i) {
+                $process->name($this->_serverName . '|monitorAlarm|'.$i);
                 Report::monitorAlarm();
             }));
         }
@@ -165,24 +183,26 @@ class Server extends ServerBase
          * DB日志进程，异步刷日志到数据库
          */
         DbLog::init();
-        $flushDbLogProcessNum = config_item('flush_db_log_process_num', 2);
-        for ($i = 0; $i < $flushDbLogProcessNum; $i++) {
-            $this->sw->addProcess(new SwooleProcess(function ($process) use ($i) {
-                $process->name($this->_serverName . '|logFlushToDB|' . $i);
-                DbLog::flush();
-            }));
-        }
+        $this->sw->addProcess(new SwooleProcess(function ($process) {
+            $process->name($this->_serverName . '|logFlushToDB');
+            DbLog::flush();
+        }));
         /** End */
 
-        if (self::$statsPidFile) {
+        if(self::$statsPidFile) {
             $this->sw->addProcess(new SwooleProcess(function ($process) {
                 $process->name($this->_serverName . '|listenPipeProcess');
                 file_put_contents(self::$statsPidFile, $process->pid);
                 SwooleProcess::signal(SIGUSR1, function ($sig) {
                     $tasks = LoadTasks::getTable();
                     $content = '';
-                    foreach ($tasks as $id => $task) {
-                        $content .= 'id = ' . $id . '; task = ' . var_export($task, true) . PHP_EOL;
+                    foreach($tasks as $id=>$task) {
+                        $content .= 'id = '.$id.'; task = '.var_export($task, true).PHP_EOL;
+                    }
+                    $content .= 'current task:'.PHP_EOL;
+                    $tasks = Tasks::$table;
+                    foreach($tasks as $task) {
+                        $content .= 'taskId = '.$task['taskId'].'; sec = '.date('Y-m-d H:i:s', $task['sec']).'; retries = '.$task['retries'].PHP_EOL;
                     }
                     self::formatOutput($content);
                 });
@@ -236,7 +256,7 @@ class Server extends ServerBase
             $this->initWork($server, $worker_id);
             //worker
             $this->setProcessName("Worker|ExecTask|{$worker_id}");
-            Process::signal();//注册信号
+            Process::signal($server);//注册信号
         }
     }
 
@@ -255,17 +275,18 @@ class Server extends ServerBase
             $loadTasksTable = LoadTasks::getTable();
             $ret = [];
             foreach ($data as $runId => $item) {
-                $taskId = $item['id'];
+                $taskId = $item['taskId'];
                 // 当前执行任务的时间戳
                 $sec = $item['sec'];
                 $task = $loadTasksTable->get($taskId);
                 // 这个任务存在，如果被删除了，就不再执行
                 if ($task) {
+                    $agentName = LoadTasks::getAgentName();
                     $msg = '任务名称: ' . $task['name'] . PHP_EOL
                         . '指定执行时间: ' . date($this->dateFormat, $sec) . PHP_EOL
-                        . '执行节点: ' . SERVER_INTERNAL_IP;
+                        . '执行节点: ' . $agentName;
                     $tmp = [
-                        'id'      => $taskId,
+                        'taskId'  => $taskId,
                         'command' => $task['command'],
                         'agents'  => $task['agents'],
                         'name'    => $task['name'],
@@ -273,36 +294,51 @@ class Server extends ServerBase
                         'runUser' => $task['runUser'],
                         'sec'     => $sec,
                         'runId'   => $runId,
+                        'retries' => 0, // 当前第几次重试
                     ];
+                    // 当前第几次重试
+                    if(isset($item['currentRetries'])) {
+                        $tmp['retries'] = $item['currentRetries'];
+                        $msg = '第'.$item['currentRetries'].'次重试' . PHP_EOL . $msg;
+                    }
+
                     //正在运行标示
-                    if (Tasks::$table->exist($runId)) Tasks::$table->set($runId, ["runStatus" => LoadTasks::RunStatusStart, "runId" => $runId]);
+                    if (Tasks::$table->exist($runId)) {
+                        Tasks::$table->set($runId, [
+                            'runStatus' => LoadTasks::RUN_STATUS_START,
+                            'runId' => $runId,
+                            // 初始化，以免重试的时候值没有变更
+                            'pid' => 0,
+                        ]);
+                    }
 
                     DbLog::log($tmp["runId"], $taskId, Constants::CUSTOM_CODE_READY_START, "任务准备开始", $msg);
                     $ret[$runId] = [
-                        "id"  => $taskId,
-                        "ret" => Process::create_process($tmp)
+                        'taskId' => $taskId,
+                        'ret'    => Process::create_process($tmp) // 创建进程准备执行
                     ];
                 }
             }
             $server->sendMessage($ret, $server->setting['worker_num'] + self::TASK_MANAGER_TASKS);
         } else if ($workerId == ($server->setting['worker_num'] + self::TASK_MANAGER_TASKS)) {
             foreach ($data as $runId => $v) {
-                $taskId = $v['id'];
+                $taskId = $v['taskId'];
                 $title = '创建进程失败';
                 $code = Constants::CUSTOM_CODE_CREATE_CHILD_PROCESS_FAILED;
+                $logMethod = 'endLog';
                 if ($v["ret"]) {
                     $title = '创建进程成功';
                     $code = Constants::CUSTOM_CODE_CREATE_CHILD_PROCESS_SUCCESS;
+                    $logMethod = 'log';
                 } else {
                     Report::taskCreateProcessFailed($taskId, $runId);//报警
                 }
-                DbLog::log($runId, $taskId, $code, $title);
+                DbLog::{$logMethod}($runId, $taskId, $code, $title);
             }
         }
     }
 
-    public static function setStatsPidFile($statsPidFile)
-    {
+    public static function setStatsPidFile($statsPidFile) {
         self::$statsPidFile = $statsPidFile;
     }
 
@@ -318,8 +354,75 @@ class Server extends ServerBase
      */
     public function onReceive(SwooleServer $server, $fd, $from_id, $data)
     {
+        $data = Packet::packDecode($data);
+        // Decode Error
+        if ($data["code"] != Constants::STATUS_CODE_SUCCESS) {
+            $req = Packet::packEncode($data);
+            $this->send($fd, $req);
+            return true;
+        }
+        $data = $data['data'];
+        // Cmd not set
+        if (empty($data["cmd"])) {
+            $pack = Packet::packFormat("invalid request", Constants::STATUS_CODE_MISS_CMD_PARAM);
+            $this->send($fd, $pack);
+            return true;
+        }
 
+        $task = [
+            "type"    => $data["type"],
+            "fd"      => $fd,
+            'from_id' => $from_id,
+        ];
+
+        // 是否有消息类型处理方法
+        if (isset($this->receiveModeProcessMaps[$data['type']])) {
+            call_user_func_array([
+                $this,
+                $this->receiveModeProcessMaps[$data['type']]
+            ], [$server, $task, $data]);
+        } else {
+            $pack = Packet::packFormat("unknown task type", Constants::STATUS_CODE_UNKNOW_TASK_TYPE);
+            $this->send($fd, $pack);
+        }
+        return true;
     }
+
+    /**
+     * 接收处理模式: 服务控制阻塞型请求等待返回结果
+     *
+     * @param object $server Swoole Server Object
+     * @param array $task task进程需要的参数
+     * @param array $data 请求参数
+     *
+     * @return bool
+     */
+    public function controlCommand($server, $task, $data)
+    {
+        $data['cmd'] = strtoupper($data['cmd']);
+
+        $pack = Packet::packFormat('unknown command!', Constants::STATUS_CODE_UNKNOW_CMD);
+
+        if($data['cmd'] === 'PING') {
+            $pack = Packet::packFormat('PONG', Constants::STATUS_CODE_SUCCESS);
+        }
+        return $this->send($task['fd'], $pack);
+    }
+
+    /**
+     * 接收处理模式: 客户端请求阻塞型请求等待返回结果
+     *
+     * @param object $server Swoole Server Object
+     * @param array $task task进程需要的参数
+     * @param array $data 请求参数
+     *
+     * @return bool
+     */
+    public function apiCommand($server, $task, $data)
+    {
+        return true;
+    }
+
 
     /**
      * task进程，调用用户的方法进行处理
@@ -364,12 +467,40 @@ class Server extends ServerBase
         $monitorKey = Constants::REDIS_KEY_AGENT_SERVER_LIST;
         // 上报的服务器IP
         while (true) {
+            $fieldValue = [
+                'time' => time(),
+                // 本节点总任务数
+                'task_total' => count(LoadTasks::getTable()),
+                // 当前这一分钟待执行的任务数
+                'current_task_count' => count(Tasks::getTasks()),
+            ];
+            if(isLinuxOS()) {
+                $fieldValue = array_merge($fieldValue, [
+                    'cpuInfo' => getCoreInformation(),
+                    'sysLoadAvg' => sys_getloadavg(),
+                    'memInfo' => getMemoryInformation([
+                        'MemTotal',
+                        'MemFree',
+                        'Buffers',
+                        'Cached',
+                        'SwapCached',
+                        'SwapTotal',
+                        'SwapFree',
+                    ]),
+                ]);
+            }
             // hash表存放最后上报时间
-            $redis->hset($monitorKey, $field, ['time' => time()]);
+            $redis->hset($monitorKey, $field, $fieldValue);
             $redis->expire($monitorKey, 86400);
             sleep(10);
             //sleep 10 sec and report again
         }
+    }
+
+    public function send($client_id, $data)
+    {
+        $data = Packet::packEncode($data);
+        return $this->sw->send($client_id, $data);
     }
 
     public function __call($func, $params)

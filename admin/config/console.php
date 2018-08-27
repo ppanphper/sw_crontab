@@ -26,6 +26,10 @@ $config = [
     'basePath'            => dirname(__DIR__),
     'bootstrap'           => ['log'],
     'controllerNamespace' => 'app\commands',
+    // 设置目标语言为简体中文
+    'language'       => 'zh-CN',
+    // 设置源语言为英语
+    'sourceLanguage' => 'en-US',
     'components'          => [
         'cache'     => [
             'class' => 'yii\caching\FileCache',
@@ -46,6 +50,19 @@ $config = [
             'decimalSeparator'  => ',',
             'thousandSeparator' => ' ',
             'currencyCode'      => 'CNY',
+        ],
+        'i18n'         => [
+            'translations' => [
+                'app*' => [
+                    'class'    => 'yii\i18n\PhpMessageSource',
+                    'basePath' => '@app/messages',
+                    // 'sourceLanguage' => 'en-US',
+                    'fileMap'  => [
+                        'app'       => 'app.php',
+                        'app/error' => 'error.php',
+                    ],
+                ],
+            ],
         ],
         'mailer'    => $mailer,
     ],

@@ -14,19 +14,19 @@ use yii\helpers\BaseHtml;
             <!-- Horizontal Form -->
             <div class="box box-info table-responsive">
                 <div class="box-header with-border">
-                    <h3 class="box-title"><?= $this->title ?></h3>
+                    <h3 class="box-title"><?=$this->title?></h3>
                 </div>
                 <!-- /.box-header -->
                 <!-- form start -->
 
                 <?php $form = ActiveForm::begin([
-                    'options'    => [
+                    'options'=> [
                         'class' => 'form-horizontal',
                     ],
                     'fieldClass' => 'app\widgets\ActiveField',
                 ]); ?>
                 <div class="box-body">
-                    <?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter category name')]) ?>
+                    <?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter category name')]) ?>
                 </div>
 
                 <div class="box-footer">

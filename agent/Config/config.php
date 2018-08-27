@@ -58,11 +58,6 @@ return [
     // 监听数据库是否有变更的频率(单位秒)，如果变更，就重新加载任务到内存表
     'monitor_reload_interval'    => 10,
 
-    /**
-     * 刷新DB日志到数据库的进程数
-     */
-    'flush_db_log_process_num'   => 2,
-
     // 写入db日志最大重试次数
     'flush_db_log_max_retry_num' => 3,
 

@@ -58,7 +58,7 @@ class AgentsCategory extends AgentsCategoryModel
 
         // grid filtering conditions
         $query->andFilterWhere([
-            'id'  => $this->id,
+            'id' => $this->id,
             'cid' => $this->cid,
             'aid' => $this->aid,
         ]);

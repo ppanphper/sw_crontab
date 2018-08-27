@@ -18,50 +18,43 @@ use dosamigos\selectize\SelectizeDropDownList;
             <!-- Horizontal Form -->
             <div class="box box-info table-responsive">
                 <div class="box-header with-border">
-                    <h3 class="box-title"><?= $this->title ?></h3>
+                    <h3 class="box-title"><?=$this->title?></h3>
                 </div>
                 <!-- /.box-header -->
                 <!-- form start -->
 
                 <?php $form = ActiveForm::begin([
-                    'options'              => [
+                    'options'=> [
                         'class' => 'form-horizontal',
                     ],
-                    'fieldClass'           => 'app\widgets\ActiveField',
-                    'enableAjaxValidation' => true, //开启Ajax验证
+                    'fieldClass' => 'app\widgets\ActiveField',
+                    'enableAjaxValidation'=>true, //开启Ajax验证
 //					'enableClientValidation'=>false //关闭客户端验证
                 ]); ?>
                 <div class="box-body">
-                    <?= $form->field($model, 'categoryIds')->widget(SelectizeDropDownList::className(), [
-                        'items'         => Category::getAllData(),
-                        'options'       => [
-                            'multiple' => 'multiple',
-                            'style'    => 'display:none;',
-                            'prompt'   => Yii::t('app', 'Please select'),
+                    <?=$form->field($model, 'categoryId')->widget(SelectizeDropDownList::className(), [
+                        'items' => Category::getDropDownListData(),
+                        'options' => [
+                            'multiple'=>'multiple',
+                            'style'=>'display:none;',
+                            'prompt'=>Yii::t('app', 'Please select'),
                         ],
                         'clientOptions' => [
-                            'plugins'     => ['remove_button'],
-                            'delimiter'   => ',',
-                            'persist'     => false,
-                            'maxItems'    => null,
-                            'valueField'  => 'id',
-                            'labelField'  => 'name',
-                            'searchField' => ['name'],
-                            'options'     => [],
+                            'plugins'=> ['remove_button'],
                         ],
                     ])
                     ?>
 
-                    <?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the server name')]) ?>
+                    <?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the server name')]) ?>
 
-                    <?= $form->field($model, 'ip')->textInput(['maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the server ip')]) ?>
+                    <?= $form->field($model, 'ip')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the server ip')]) ?>
 
-                    <?= $form->field($model, 'port')->textInput(['placeholder' => Yii::t('app', 'Please enter the server port')]) ?>
+                    <?= $form->field($model, 'port')->textInput(['placeholder'=>Yii::t('app', 'Please enter the server port')]) ?>
 
                     <?= $form->field($model, 'status')->dropDownList([
-                        Agents::STATUS_ENABLED  => Yii::t('app', 'Enabled'),
-                        Agents::STATUS_DISABLED => Yii::t('app', 'Disabled'),
-                    ]) ?>
+                        Agents::STATUS_ENABLED=>Yii::t('app','Enabled'),
+                        Agents::STATUS_DISABLED=>Yii::t('app','Disabled'),
+                    ])?>
                 </div>
 
                 <div class="box-footer">

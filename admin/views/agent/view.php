@@ -3,6 +3,7 @@
 use yii\helpers\Html;
 use yii\widgets\DetailView;
 use app\models\Agents;
+use app\models\Category;
 
 /* @var $this yii\web\View */
 /* @var $model app\models\Agents */
@@ -28,7 +29,7 @@ $this->params['breadcrumbs'][] = $this->title;
         <div class="col-md-6">
             <div class="box table-responsive">
                 <div class="box-header with-border">
-                    <h3 class="box-title"><?= $this->title; ?></h3>
+                    <h3 class="box-title"><?= $this->title;?></h3>
                 </div>
                 <!-- /.box-header -->
                 <div class="box-body">
@@ -38,49 +39,65 @@ $this->params['breadcrumbs'][] = $this->title;
                         'options'    => ['class' => 'table table-bordered detail-view'],
                         'attributes' => [
                             [
-                                'label' => Yii::t('app', 'ID'),
+                                'attribute' => 'id',
                                 'value' => $model->id,
                             ],
                             [
-                                'format' => 'html',
-                                'label'  => Yii::t('app', 'Category Name'),
-                                'value'  => function ($model) {
-                                    if ($model->category) {
-                                        $html = '';
-                                        foreach ($model->category as $item) {
-                                            $html .= '<span class="label label-info">' . html::encode($item->name) . '</span>&nbsp;';
+                                'format'=> 'html',
+                                'attribute' => 'categoryId',
+                                'value' => function ($model) {
+                                    $html = '<ul class="list-unstyled">';
+                                    if($model->categoryId && ($data = Category::getDropDownListData($model->categoryId))) {
+                                        foreach($data as $name) {
+                                            $html .= '<li><span class="label label-primary">'.html::encode($name).'</span></li>';
                                         }
-                                        return $html;
                                     }
-                                    return '<span class="not-set">' . Yii::t('yii', '(not set)') . '</span>';
+                                    else {
+                                        $html .= '<li><span class="not-set">' . Yii::t('yii', '(not set)') . '</span></li>';
+                                    }
+                                    $html .= '</ul>';
+                                    return $html;
                                 },
                             ],
                             [
-                                'label' => Yii::t('app', 'Name'),
+                                'attribute' => 'name',
                                 'value' => $model->name,
                             ],
                             [
-                                'label' => Yii::t('app', 'Ip'),
+                                'attribute' => 'ip',
                                 'value' => $model->ip,
                             ],
                             [
-                                'label' => Yii::t('app', 'Port'),
+                                'attribute' => 'port',
                                 'value' => $model->port,
                             ],
                             [
-                                'format'     => 'html',
-                                'label'      => Yii::t('app', 'Status'),
-                                'attributes' => 'status',
-                                'value'      => function ($model) {
-                                    if ($model->status == Agents::STATUS_DISABLED) return '<span class="label label-danger">' . Yii::t('app', 'Disabled') . '</span>';
-                                    if ($model->status == Agents::STATUS_ENABLED) return '<span class="label label-success">' . Yii::t('app', 'Enabled') . '</span>';
+                                'format' => 'html',
+                                'attribute' => 'status',
+                                'value' => function($model){
+                                    if($model->status == Agents::STATUS_DISABLED) return '<span class="label label-danger">'.Yii::t('app','Disabled').'</span>';
+                                    if($model->status == Agents::STATUS_ENABLED) return '<span class="label label-success">'.Yii::t('app','Enabled').'</span>';
                                 }
+                            ],
+                            // 节点状态
+                            [
+                                'format'    => 'html', // 此列内容输出时不会被转义
+                                'attribute' => 'agent_status', // 字段名
+                                'value'     => function ($model) { // 该列内容
+                                    if ($model->agent_status == Agents::AGENT_STATUS_OFFLINE) return '<span class="label label-danger">' . Yii::t('app', 'Offline') . '</span>';
+                                    if ($model->agent_status == Agents::AGENT_STATUS_ONLINE) return '<span class="label label-success">' . Yii::t('app', 'Normal') . '</span>';
+                                    if ($model->agent_status == Agents::AGENT_STATUS_ONLINE_REPORT_FAILED) return '<span class="label label-success">' . Yii::t('app', 'No heartbeat, but the nodes are normal') . '</span>';
+                                },
                             ],
                             // 心跳
                             [
                                 'label' => Yii::t('app', 'Heartbeat'),
+                                'attribute' => 'last_report_time', // 字段名
                                 'value' => function ($model) {
-                                    return $model->getHeartbeatTime($model->ip, $model->port);
+                                    if($model->last_report_time) {
+                                        return Yii::$app->formatter->asDatetime($model->last_report_time);
+                                    }
+                                    return '';
                                 },
                             ],
                         ],

@@ -19,8 +19,8 @@ class Logs extends LogsModel
     {
         return [
             [['id', 'task_id', 'run_id', 'code'], 'integer'],
-            [['consume_time'], 'number', 'max' => 9999999999.999999, 'min' => 0],
-            [['title', 'created'], 'safe'],
+            [['consume_time'], 'number', 'max'=> 9999999999.999999, 'min'=>0],
+            [['title','created'], 'safe'],
         ];
     }
 
@@ -48,7 +48,7 @@ class Logs extends LogsModel
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
-            'sort'  => [
+            'sort' => [
                 'defaultOrder' => [
                     'id' => SORT_DESC,
 //					'task_id' => SORT_DESC,
@@ -66,26 +66,27 @@ class Logs extends LogsModel
 
         // grid filtering conditions
         $query->andFilterWhere([
-            'id'      => $this->id,
+            'id' => $this->id,
             'task_id' => $this->task_id,
-            'run_id'  => $this->run_id,
+            'run_id' => $this->run_id,
 //            'created' => $this->created,
         ]);
 
-        if ($this->consume_time) {
+        if($this->consume_time) {
             $query->andWhere("consume_time >= :consume_time", [':consume_time' => $this->consume_time]);
         }
 
         if ($this->created) {
             $createTime = strtotime($this->created);
-            $createTimeEnd = $createTime + 24 * 3600;
+            $createTimeEnd = $createTime + 24*3600;
             $query->andWhere("created BETWEEN {$createTime} AND {$createTimeEnd}");
         }
 
-        if ($this->code == 255) {
+        if($this->code == 255) {
             $query->andWhere("code BETWEEN 1 and 255");
-        } else {
-            $query->andFilterWhere(['code' => $this->code]);
+        }
+        else {
+            $query->andFilterWhere(['code'=>$this->code]);
         }
 
         $query->andFilterWhere(['like', 'title', $this->title])
@@ -94,9 +95,9 @@ class Logs extends LogsModel
         $searchBool = false;
         // 没有查询条件
         $noQueryCondition = true;
-        foreach ($this->attributes as $key => $attribute) {
-            if (!empty($attribute)) {
-                if ($key == 'run_id') {
+        foreach($this->attributes as $key=>$attribute) {
+            if(!empty($attribute)) {
+                if($key == 'run_id') {
                     $searchBool = true;
 //					break;
                 }
@@ -104,7 +105,7 @@ class Logs extends LogsModel
                 $noQueryCondition = false;
             }
         }
-        if ($searchBool) {
+        if($searchBool) {
             $dataProvider->setSort([
                 'defaultOrder' => [
                     'code' => SORT_DESC,
@@ -112,7 +113,7 @@ class Logs extends LogsModel
             ]);
         }
         // 没有查询条件
-        if ($noQueryCondition) {
+        if($noQueryCondition) {
             // count 优化
             $countQuery = clone $query;
             // SELECT id FROM `logs` ORDER BY id DESC LIMIT 1;

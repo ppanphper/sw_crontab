@@ -5,12 +5,12 @@ namespace app\models\searchs;
 use Yii;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
-use app\models\Category as CategoryModel;
+use app\models\ViaTable as ViaTableModel;
 
 /**
- * Category represents the model behind the search form about `app\models\Category`.
+ * ViaTable represents the model behind the search form about `app\models\ViaTable`.
  */
-class Category extends CategoryModel
+class ViaTable extends ViaTableModel
 {
     /**
      * @inheritdoc
@@ -18,8 +18,7 @@ class Category extends CategoryModel
     public function rules()
     {
         return [
-            [['id', 'status'], 'integer'],
-            [['name'], 'safe'],
+            [['id', 'aid', 'bid', 'type'], 'integer'],
         ];
     }
 
@@ -41,7 +40,7 @@ class Category extends CategoryModel
      */
     public function search($params)
     {
-        $query = CategoryModel::find();
+        $query = ViaTableModel::find();
 
         // add conditions that should always apply here
 
@@ -56,15 +55,14 @@ class Category extends CategoryModel
             // $query->where('0=1');
             return $dataProvider;
         }
-        $query->where(['<>', 'status', -1]);
 
         // grid filtering conditions
         $query->andFilterWhere([
             'id' => $this->id,
-            'status' => $this->status,
+            'aid' => $this->aid,
+            'bid' => $this->bid,
+            'type' => $this->type,
         ]);
-
-        $query->andFilterWhere(['like', 'name', $this->name]);
 
         return $dataProvider;
     }

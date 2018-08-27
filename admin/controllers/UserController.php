@@ -24,7 +24,7 @@ class UserController extends Controller
     {
         return [
             'verbs' => [
-                'class'   => VerbFilter::className(),
+                'class' => VerbFilter::className(),
                 'actions' => [
                     'delete' => ['POST'],
                 ],
@@ -42,16 +42,14 @@ class UserController extends Controller
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
         return $this->render('index', [
-            'searchModel'  => $searchModel,
+            'searchModel' => $searchModel,
             'dataProvider' => $dataProvider,
         ]);
     }
 
     /**
      * Displays a single User model.
-     *
      * @param integer $id
-     *
      * @return mixed
      * @throws NotFoundHttpException if the model cannot be found
      */
@@ -74,9 +72,9 @@ class UserController extends Controller
 
         $loadBoolean = $model->load(Yii::$app->request->post());
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $loadBoolean) {
+        if(Yii::$app->request->isAjax && $loadBoolean) {
 
-            Yii::$app->response->format = Response::FORMAT_JSON;
+            Yii::$app->response->format=Response::FORMAT_JSON;
             return ActiveForm::validate($model);
         }
 
@@ -93,9 +91,7 @@ class UserController extends Controller
     /**
      * Updates an existing User model.
      * If update is successful, the browser will be redirected to the 'view' page.
-     *
      * @param integer $id
-     *
      * @return mixed
      * @throws NotFoundHttpException if the model cannot be found
      */
@@ -106,7 +102,7 @@ class UserController extends Controller
 
         $loadBoolean = $model->load(Yii::$app->request->post());
         //Ajax表单验证
-        if (Yii::$app->request->isAjax && $loadBoolean) {
+        if(Yii::$app->request->isAjax && $loadBoolean) {
 
             Yii::$app->response->format = Response::FORMAT_JSON;
             return ActiveForm::validate($model);
@@ -138,33 +134,36 @@ class UserController extends Controller
     /**
      * Deletes an existing User model.
      * If deletion is successful, the browser will be redirected to the 'index' page.
-     *
      * @param integer $id
-     *
      * @return mixed
      * @throws NotFoundHttpException if the model cannot be found
      */
     public function actionDelete($id)
     {
         $model = $this->findModel($id);
-        // 把权限记录也删除掉
-        $model->on($model::EVENT_AFTER_DELETE, function ($event) {
-            $userId = $event->data->id;
-            $manager = Configs::authManager();
-            $assignments = $manager->getAssignments($userId);
-            if ($assignments) {
-                foreach ($assignments as $name => $assignment) {
-                    try {
-                        $item = new \StdClass();
-                        $item->name = $name;
-                        $manager->revoke($item, $userId);
-                    } catch (\Exception $exc) {
-                        Yii::error($exc->getMessage(), __METHOD__);
-                    }
-                }
-            }
-        }, $model);
-        $model->delete();
+        // 标记为删除
+        $model->status = -1;
+        $model->update_time = time();
+        $model->save(false, ['status', 'update_time']);
+//		$model = $this->findModel($id);
+//		// 把权限记录也删除掉
+//		$model->on($model::EVENT_AFTER_DELETE, function($event) {
+//			$userId = $event->data->id;
+//			$manager = Configs::authManager();
+//			$assignments = $manager->getAssignments($userId);
+//			if($assignments) {
+//				foreach ($assignments as $name=>$assignment) {
+//					try {
+//						$item = new \StdClass();
+//						$item->name = $name;
+//						$manager->revoke($item, $userId);
+//					} catch (\Exception $exc) {
+//						Yii::error($exc->getMessage(), __METHOD__);
+//					}
+//				}
+//			}
+//		}, $model);
+//		$model->delete();
 
         return $this->redirect(['index']);
     }
@@ -172,9 +171,7 @@ class UserController extends Controller
     /**
      * Finds the User model based on its primary key value.
      * If the model is not found, a 404 HTTP exception will be thrown.
-     *
      * @param integer $id
-     *
      * @return User the loaded model
      * @throws NotFoundHttpException if the model cannot be found
      */

@@ -10,7 +10,7 @@ use yii\grid\GridView;
 $this->title = Yii::t('app', 'Categories');
 $this->params['breadcrumbs'][] = $this->title;
 ?>
-<h1><?= $this->title ?></h1>
+<h1><?=$this->title?></h1>
 <div class="category-index">
     <div class="row">
         <div class="col-xs-12">
@@ -24,9 +24,9 @@ $this->params['breadcrumbs'][] = $this->title;
                 <div class="box-body">
                     <?= GridView::widget([
                         'dataProvider' => $dataProvider,
-                        'filterModel'  => $searchModel,
-                        'columns'      => [
-                            //            ['class' => 'yii\grid\SerialColumn'],
+                        'filterModel' => $searchModel,
+                        'columns' => [
+                //            ['class' => 'yii\grid\SerialColumn'],
 
                             'id',
                             'name',

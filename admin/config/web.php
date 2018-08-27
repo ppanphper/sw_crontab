@@ -42,7 +42,7 @@ $config = [
         ],
         'cache'        => [
             'class'     => 'ppanphper\redis\Cache',
-            'keyPrefix' => 'PHP:',
+            'keyPrefix' => 'Cache:',
         ],
         'errorHandler' => [
             'errorAction' => 'site/error',
@@ -129,6 +129,14 @@ $config = [
                         'dmstr\web\AdminLteAsset',
                         'dosamigos\selectize\SelectizeAsset',
                         'hiqdev\assets\icheck\iCheckAsset'
+                    ]
+                ],
+                'dosamigos\selectize\SelectizeAsset' => [
+                    'css' => [
+                        'css/selectize.default.css',
+                    ],
+                    'js' => [
+                        'js/standalone/selectize.min.js',
                     ]
                 ],
             ],
