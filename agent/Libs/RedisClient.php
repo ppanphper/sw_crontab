@@ -396,12 +396,19 @@ class RedisClient
             if(!is_array($keys)) {
                 $keys = [$keys];
             }
+            else {
+                // 不需要键名索引，用数字重新建立索引
+                $keys = array_values($keys);
+            }
             if(!is_array($args)) {
                 $args = [$args];
             }
+            else {
+                // 不需要键名索引，用数字重新建立索引
+                $args = array_values($args);
+            }
             $keyCount = count($keys);
-            // 不需要键名索引，用数字重新建立索引
-            $args = array_values(array_merge($keys, $args));
+            $args = array_merge($keys, $args);
             for($i =0; $i < 2; $i++) {
                 $result = $this->_redis->evalSha($sha1, $args, $keyCount);
                 if($result === false && $i === 0) {
