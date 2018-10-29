@@ -5,7 +5,7 @@
 # http://www.sequelpro.com/
 # https://github.com/sequelpro/sequelpro
 #
-# Host: 121.199.43.216 (MySQL 5.6.34)
+# Host: 127.0.0.1 (MySQL 5.6.34)
 # Database: sw_crontab
 # Generation Time: 2018-06-27 05:34:05 +0000
 # ************************************************************
@@ -83,31 +83,68 @@ CREATE TABLE `alarm_user_group_account` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+# RBAC功能的表有外键设计, 需要按照顺序创建表
 
-# Dump of table auth_assignment
+# Dump of table menu
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `auth_assignment`;
+DROP TABLE IF EXISTS `menu`;
 
-CREATE TABLE `auth_assignment` (
-  `item_name` varchar(64) NOT NULL,
-  `user_id` varchar(64) NOT NULL,
-  `created_at` int(11) DEFAULT NULL,
-  PRIMARY KEY (`item_name`,`user_id`),
-  KEY `auth_assignment_user_id_idx` (`user_id`),
-  CONSTRAINT `auth_assignment_ibfk_1` FOREIGN KEY (`item_name`) REFERENCES `auth_item` (`name`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存放授权条目对用户的指派情况';
+CREATE TABLE `menu` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(128) NOT NULL,
+  `parent` int(11) unsigned DEFAULT NULL,
+  `route` varchar(256) DEFAULT NULL,
+  `order` int(11) unsigned DEFAULT '0',
+  `data` text,
+  PRIMARY KEY (`id`),
+  KEY `parent` (`parent`),
+  CONSTRAINT `menu_ibfk_1` FOREIGN KEY (`parent`) REFERENCES `menu` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-LOCK TABLES `auth_assignment` WRITE;
-/*!40000 ALTER TABLE `auth_assignment` DISABLE KEYS */;
+LOCK TABLES `menu` WRITE;
+/*!40000 ALTER TABLE `menu` DISABLE KEYS */;
 
-INSERT INTO `auth_assignment` (`item_name`, `user_id`, `created_at`)
+INSERT INTO `menu` (`id`, `name`, `parent`, `route`, `order`, `data`)
 VALUES
-  ('管理员','1',1516099151);
+  (1,'定时任务',NULL,'/crontab/index',0,'{\"icon\": \"tasks\"}'),
+  (2,'代理节点',NULL,'/agent/index',0,'{\"icon\":\"server\"}'),
+  (8,'系统配置',NULL,NULL,1,'{\"icon\": \"cog\", \"visible\": true}'),
+  (10,'分类管理',NULL,'/category/index',1,'{\"icon\":\"th-list\"}'),
+  (13,'任务日志',NULL,'/logs/index',1,'{\"icon\":\"file-o\"}'),
+  (4,'路由',8,'/admin/route/index',0,NULL),
+  (5,'权限',8,'/admin/permission/index',1,NULL),
+  (6,'角色',8,'/admin/role/index',2,NULL),
+  (7,'分配',8,'/admin/assignment/index',3,NULL),
+  (9,'菜单',8,'/admin/menu/index',4,NULL),
+  (11,'用户',8,'/user/index',5,'{\"icon\":\"users\"}'),
+  (12,'规则',8,'/admin/rule/index',0,NULL);
 
-/*!40000 ALTER TABLE `auth_assignment` ENABLE KEYS */;
+/*!40000 ALTER TABLE `menu` ENABLE KEYS */;
 UNLOCK TABLES;
 
+# Dump of table auth_rule
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `auth_rule`;
+
+CREATE TABLE `auth_rule` (
+  `name` varchar(64) NOT NULL,
+  `data` blob,
+  `created_at` int(11) unsigned DEFAULT NULL,
+  `updated_at` int(11) unsigned DEFAULT NULL,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存放规则';
+
+LOCK TABLES `auth_rule` WRITE;
+/*!40000 ALTER TABLE `auth_rule` DISABLE KEYS */;
+
+INSERT INTO `auth_rule` (`name`, `data`, `created_at`, `updated_at`)
+VALUES
+  ('访问',X'4F3A32353A226170705C636F6D706F6E656E74735C41636365737352756C65223A333A7B733A343A226E616D65223B733A363A22E8AEBFE997AE223B733A393A22637265617465644174223B693A313531363137353537323B733A393A22757064617465644174223B693A313531363137353537323B7D',1516175572,1516175572);
+
+/*!40000 ALTER TABLE `auth_rule` ENABLE KEYS */;
+UNLOCK TABLES;
 
 # Dump of table auth_item
 # ------------------------------------------------------------
@@ -120,8 +157,8 @@ CREATE TABLE `auth_item` (
   `description` text,
   `rule_name` varchar(64) DEFAULT NULL,
   `data` blob,
-  `created_at` int(11) DEFAULT NULL,
-  `updated_at` int(11) DEFAULT NULL,
+  `created_at` int(11) unsigned DEFAULT NULL,
+  `updated_at` int(11) unsigned DEFAULT NULL,
   PRIMARY KEY (`name`),
   KEY `rule_name` (`rule_name`),
   KEY `type` (`type`),
@@ -261,7 +298,6 @@ VALUES
 /*!40000 ALTER TABLE `auth_item` ENABLE KEYS */;
 UNLOCK TABLES;
 
-
 # Dump of table auth_item_child
 # ------------------------------------------------------------
 
@@ -275,6 +311,32 @@ CREATE TABLE `auth_item_child` (
   CONSTRAINT `auth_item_child_ibfk_1` FOREIGN KEY (`parent`) REFERENCES `auth_item` (`name`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `auth_item_child_ibfk_2` FOREIGN KEY (`child`) REFERENCES `auth_item` (`name`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存放授权条目的层次关系';
+
+
+
+# Dump of table auth_assignment
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `auth_assignment`;
+
+CREATE TABLE `auth_assignment` (
+  `item_name` varchar(64) NOT NULL,
+  `user_id` varchar(64) NOT NULL,
+  `created_at` int(11) unsigned DEFAULT NULL,
+  PRIMARY KEY (`item_name`,`user_id`),
+  KEY `auth_assignment_user_id_idx` (`user_id`),
+  CONSTRAINT `auth_assignment_ibfk_1` FOREIGN KEY (`item_name`) REFERENCES `auth_item` (`name`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存放授权条目对用户的指派情况';
+
+LOCK TABLES `auth_assignment` WRITE;
+/*!40000 ALTER TABLE `auth_assignment` DISABLE KEYS */;
+
+INSERT INTO `auth_assignment` (`item_name`, `user_id`, `created_at`)
+VALUES
+  ('管理员','1',1516099151);
+
+/*!40000 ALTER TABLE `auth_assignment` ENABLE KEYS */;
+UNLOCK TABLES;
 
 LOCK TABLES `auth_item_child` WRITE;
 /*!40000 ALTER TABLE `auth_item_child` DISABLE KEYS */;
@@ -302,31 +364,6 @@ VALUES
 /*!40000 ALTER TABLE `auth_item_child` ENABLE KEYS */;
 UNLOCK TABLES;
 
-
-# Dump of table auth_rule
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `auth_rule`;
-
-CREATE TABLE `auth_rule` (
-  `name` varchar(64) NOT NULL,
-  `data` blob,
-  `created_at` int(11) DEFAULT NULL,
-  `updated_at` int(11) DEFAULT NULL,
-  PRIMARY KEY (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='存放规则';
-
-LOCK TABLES `auth_rule` WRITE;
-/*!40000 ALTER TABLE `auth_rule` DISABLE KEYS */;
-
-INSERT INTO `auth_rule` (`name`, `data`, `created_at`, `updated_at`)
-VALUES
-  ('访问',X'4F3A32353A226170705C636F6D706F6E656E74735C41636365737352756C65223A333A7B733A343A226E616D65223B733A363A22E8AEBFE997AE223B733A393A22637265617465644174223B693A313531363137353537323B733A393A22757064617465644174223B693A313531363137353537323B7D',1516175572,1516175572);
-
-/*!40000 ALTER TABLE `auth_rule` ENABLE KEYS */;
-UNLOCK TABLES;
-
-
 # Dump of table category
 # ------------------------------------------------------------
 
@@ -337,8 +374,6 @@ CREATE TABLE `category` (
   `name` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
 
 # Dump of table crontab
 # ------------------------------------------------------------
@@ -388,46 +423,6 @@ CREATE TABLE `logs` (
   KEY `IDX_TASK_RUN_ID` (`task_id`,`run_id`),
   KEY `IDX_CREATED` (`created`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='任务执行日志表';
-
-
-
-# Dump of table menu
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `menu`;
-
-CREATE TABLE `menu` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(128) NOT NULL,
-  `parent` int(11) DEFAULT NULL,
-  `route` varchar(256) DEFAULT NULL,
-  `order` int(11) unsigned DEFAULT '0',
-  `data` text,
-  PRIMARY KEY (`id`),
-  KEY `parent` (`parent`),
-  CONSTRAINT `menu_ibfk_1` FOREIGN KEY (`parent`) REFERENCES `menu` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-LOCK TABLES `menu` WRITE;
-/*!40000 ALTER TABLE `menu` DISABLE KEYS */;
-
-INSERT INTO `menu` (`id`, `name`, `parent`, `route`, `order`, `data`)
-VALUES
-  (1,'定时任务',NULL,'/crontab/index',0,'{\"icon\": \"tasks\"}'),
-  (2,'代理节点',NULL,'/agent/index',0,'{\"icon\":\"server\"}'),
-  (4,'路由',8,'/admin/route/index',0,NULL),
-  (5,'权限',8,'/admin/permission/index',1,NULL),
-  (6,'角色',8,'/admin/role/index',2,NULL),
-  (7,'分配',8,'/admin/assignment/index',3,NULL),
-  (8,'系统配置',NULL,NULL,1,'{\"icon\": \"cog\", \"visible\": true}'),
-  (9,'菜单',8,'/admin/menu/index',4,NULL),
-  (10,'分类管理',NULL,'/category/index',1,'{\"icon\":\"th-list\"}'),
-  (11,'用户',8,'/user/index',5,'{\"icon\":\"users\"}'),
-  (12,'规则',8,'/admin/rule/index',0,NULL),
-  (13,'任务日志',NULL,'/logs/index',1,'{\"icon\":\"file-o\"}');
-
-/*!40000 ALTER TABLE `menu` ENABLE KEYS */;
-UNLOCK TABLES;
 
 
 # Dump of table user
