@@ -8,7 +8,7 @@ class Log {
      * 日志文件名前缀
      * @var
      */
-    protected static $_logNamePrefix = 'swc-';
+    protected static $_logNamePrefix = '';
     protected static $_date_fmt	= 'Y-m-d H:i:s.u';
     /**
      * 日期格式化函数
@@ -78,8 +78,12 @@ class Log {
         self::$_log_path = !empty($config['path']) ? $config['path'] : $defaultLogPath;
         self::$_log_path = rtrim(self::$_log_path,DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
-        if(!empty($config['log_name_prefix']) && is_string($config['log_name_prefix'])) {
-            self::$_logNamePrefix = $config['log_name_prefix'];
+        if(!empty($config['prefix']) && is_string($config['prefix'])) {
+            self::$_logNamePrefix = $config['prefix'];
+        }
+
+        if (!empty($config['mode'])) {
+            self::$_mode = $config['mode'];
         }
 
         if(!is_dir(self::$_log_path)) {
