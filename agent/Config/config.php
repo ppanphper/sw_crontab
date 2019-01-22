@@ -15,8 +15,8 @@ return [
     // 系统默认通知地址列表，如果任务负责人无法查到，就通知系统负责人
     'system_manage_notice_address' => [
         [
-            'name'   => 'SWC系统管理员',
-            'email'  => 'admin@Email.com',
+            'name'  => 'SWC系统管理员',
+            'email' => 'admin@Email.com',
             // 暂未实现
 //            'mobile' => 'xxxxxxxxxx',
             // 暂未实现
@@ -62,6 +62,11 @@ return [
     'flush_db_log_max_retry_num' => 3,
 
     'log'            => [
+        // 日志存放路径
+        'path'         => '',
+        // 日志文件名前缀
+        'prefix'       => '',
+        // 记录日志级别
         'levels'       => ['Error', 'Warning', 'Info'],
         // 达到多少条日志flush到本地文件
         'auto_flush'   => 1000,
@@ -69,7 +74,10 @@ return [
         'stats_sleep'  => 5,
         // 达到多少秒钟就把缓存区间中的日志flush到本地文件
         'timer_fflush' => 300,
+        // 时间格式化
         'date_format'  => 'Y-m-d H:i:s.u',
+        // 日志文件权限
+        'mode'         => 0644,
     ],
 
     /**

@@ -8,7 +8,7 @@ class Log {
      * 日志文件名前缀
      * @var
      */
-    protected static $_logNamePrefix = 'swc-';
+    protected static $_logNamePrefix = '';
     protected static $_date_fmt	= 'Y-m-d H:i:s.u';
     /**
      * 日期格式化函数
@@ -72,14 +72,18 @@ class Log {
     {
         $config = config_item('log');
 
-        $defaultLogPath = ROOT_PATH . 'Logs/';
+        $defaultLogPath = ROOT_PATH . 'Logs' . DIRECTORY_SEPARATOR;
 
         // 默认日志都写在此目录
         self::$_log_path = !empty($config['path']) ? $config['path'] : $defaultLogPath;
-        self::$_log_path = rtrim(self::$_log_path,'/').'/';
+        self::$_log_path = rtrim(self::$_log_path,DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
-        if(!empty($config['log_name_prefix']) && is_string($config['log_name_prefix'])) {
-            self::$_logNamePrefix = $config['log_name_prefix'];
+        if(!empty($config['prefix']) && is_string($config['prefix'])) {
+            self::$_logNamePrefix = $config['prefix'];
+        }
+
+        if (!empty($config['mode'])) {
+            self::$_mode = $config['mode'];
         }
 
         if(!is_dir(self::$_log_path)) {
@@ -195,7 +199,7 @@ class Log {
             // self::$fp = self::getMmapFileHandle($filePath);
             self::$fp = fopen($filePath, 'ab');
             if(empty(self::$fp)) {
-//				echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
+                // echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
@@ -225,9 +229,9 @@ class Log {
                             $filePath = self::getLogFilePath($log['fn']);
                             self::$fp = fopen($filePath, 'ab');
                             // 打开新的文件映射到内存中
-//							self::$fp = self::getMmapFileHandle($filePath);
+                            // self::$fp = self::getMmapFileHandle($filePath);
                             if(empty(self::$fp)) {
-//								echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
+                                // echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
 
                                 return FALSE;
@@ -254,7 +258,7 @@ class Log {
             $filePath = self::getLogFilePath();
             self::$fp = fopen($filePath, 'ab');
             if(empty(self::$fp)) {
-//				echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
+                // echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
@@ -284,9 +288,9 @@ class Log {
                         $filePath = self::getLogFilePath($log['fn']);
                         self::$fp = fopen($filePath, 'ab');
                         // 打开新的文件映射到内存中
-//						self::$fp = self::getMmapFileHandle($filePath);
+                        // self::$fp = self::getMmapFileHandle($filePath);
                         if(empty(self::$fp)) {
-//							echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
+                            // echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                             echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                             return FALSE;
                         }
@@ -322,7 +326,7 @@ class Log {
      * @param $time
      * @return string
      */
-    protected static function formatLogMessage($message,$level,$time=null) {
+    public static function formatLogMessage($message,$level,$time=null) {
         $time ?: $time = microtime(true);
         $callback = self::$_date_format_callable;
         $date = $callback(...array(self::$_date_fmt, $time));
@@ -332,10 +336,15 @@ class Log {
     /**
      * 获取日志文件路径
      * @param string $suffix
+     * @param string $subdirectory 子目录
      * @return string
      */
-    protected static function getLogFilePath($suffix = '') {
-        return self::$_log_path . self::getFileName($suffix);
+    public static function getLogFilePath($suffix = '', $subdirectory='') {
+        $logPath = self::$_log_path;
+        if ($subdirectory) {
+            $logPath .= trim($subdirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        }
+        return $logPath . self::getFileName($suffix);
     }
 
     /**
@@ -343,7 +352,7 @@ class Log {
      * @param string $suffix
      * @return string
      */
-    protected static function getFileName($suffix='') {
+    public static function getFileName($suffix='') {
         $fileName = 'log-'.$suffix.'.log';
         if($suffix === '') {
             $fileName = 'log-'.date("Y-m-d").'.log';
@@ -356,7 +365,7 @@ class Log {
      * @param $filePath
      * @return null | resource
      */
-    protected static function getMmapFileHandle($filePath) {
+    public static function getMmapFileHandle($filePath) {
         if(!file_exists($filePath)) {
             $offset = self::generateLogFile($filePath);
             if($offset === false) {
@@ -369,12 +378,26 @@ class Log {
     }
 
     /**
+     * @param $filePath
+     * @param string $openMode
+     *
+     * @return bool|resource
+     */
+    public static function getFileHandle($filePath, $openMode='a+b') {
+        $fp = fopen($filePath, $openMode);
+        if ($fp) {
+            @chmod($filePath, self::$_mode);
+        }
+        return $fp;
+    }
+
+    /**
      * 生成日志文件
      * @param $filePath
      * @return mixed
      */
-    protected static function generateLogFile($filePath) {
-        return file_put_contents($filePath, "<" . "?php  if ( ! defined('ROOT_PATH')) exit('No direct script access allowed'); ?" . ">" . PHP_EOL . PHP_EOL);
+    public static function generateLogFile($filePath) {
+        return file_put_contents($filePath, "");
     }
 
     /**
@@ -391,6 +414,17 @@ class Log {
         $milliseconds = str_pad(round(($uTimeStamp - $timestamp) * 1000000), 6, 0);
         // 把格式Y-m-d H:i:s.u的u替换成毫秒值
         return date(preg_replace('#(?<!\\\\)u#', $milliseconds, $format), $uTimeStamp);
+    }
+
+    /**
+     * @param string $subdirectory
+     * @param int $mode
+     */
+    public static function createLogDir($subdirectory, $mode = 0744) {
+        $logDir = self::$_log_path . trim($subdirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (!is_dir($logDir)) {
+            createDir($logDir, $mode);
+        }
     }
 }
 // END Log Class
