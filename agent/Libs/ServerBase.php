@@ -275,7 +275,17 @@ abstract class ServerBase
      */
     public function setProcessName($name, $separator = '|')
     {
-        swoole_set_process_name($this->_serverName . $separator . $name);
+        if (stristr(PHP_OS, 'DAR')) {
+            return;
+        }
+
+        $processNewName = $this->_serverName . $separator . $name;
+        if (function_exists('cli_set_process_title')) {
+            cli_set_process_title($processNewName);
+        }
+        else {
+            swoole_set_process_name($processNewName);
+        }
     }
 
     /**
@@ -396,7 +406,9 @@ abstract class ServerBase
          */
         Log::init();
         $this->sw->addProcess(new SwooleProcess(function ($process) {
-            $process->name($this->_serverName . '|LogFlushToDisk');
+            if (!stristr(PHP_OS, 'DAR')) {
+                $process->name($this->_serverName . '|LogFlushToDisk');
+            }
             return Log::flush();
         }));
         /** End */

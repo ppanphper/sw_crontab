@@ -468,6 +468,16 @@ foreach($noticeWayMaps as &$val) {
                         ],
                     ])?>
 
+                    <?= $form->field($model, 'log_opt')->widget(SelectizeDropDownList::class, [
+                        'items' => [
+                            Crontab::LOG_OPT_IGNORE=>Yii::t('app','Ignore'),
+                            Crontab::LOG_OPT_WRITE_FILE=>Yii::t('app','Generate the file by run id and write'),
+                        ],
+                        'options' => [
+                            'placeholder'=>Yii::t('app', 'The default ignore')
+                        ],
+                    ])?>
+
                     <?= $form->field($model, 'retries')->textInput(['placeholder'=>Yii::t('app', 'Please enter the number of retries')])->hint(Yii::t('app', 'Zero means no retry')) ?>
 
                     <?= $form->field($model, 'retry_interval')->textInput(['placeholder'=>Yii::t('app', 'Please enter the retry interval')])->hint(Yii::t('app', 'Zero means immediate retry').', '.Yii::t('app', 'The unit is seconds')) ?>

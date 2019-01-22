@@ -295,9 +295,10 @@ class Server extends ServerBase
                         'sec'     => $sec,
                         'runId'   => $runId,
                         'retries' => 0, // 当前第几次重试
+                        'logOpt'  => $task['logOpt'],
                     ];
                     // 当前第几次重试
-                    if(isset($item['currentRetries'])) {
+                    if (isset($item['currentRetries'])) {
                         $tmp['retries'] = $item['currentRetries'];
                         $msg = '第'.$item['currentRetries'].'次重试' . PHP_EOL . $msg;
                     }

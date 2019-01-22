@@ -118,6 +118,7 @@ return [
     'Save data failed'                                             => '保存数据失败',
     'The unit is seconds'                                          => '单位是秒',
     'Time out option' => '执行超时选项',
+    'Log out option' => '日志输出选项',
     'The default ignore' => '默认忽略',
 
     'Task ready start'              => '任务准备开始',
@@ -173,4 +174,5 @@ return [
     'Zero means no retry' => '0表示不重试',
     'Zero means immediate retry' => '0表示立即重试',
     'Failed validation form' => '验证表单失败',
+    'Generate the file by run id and write' => '按运行Id生成文件并写入',
 ];

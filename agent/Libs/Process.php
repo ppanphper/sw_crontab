@@ -30,6 +30,8 @@ class Process
     static public $process_list = [];
     private static $process_stdout = [];
     private static $max_stdout = 60000;
+    // 输出写入按运行Id生成的日志文件
+    private static $process_logWriteFile = [];
 
     public static function init()
     {
@@ -160,7 +162,7 @@ class Process
                 }
                 // 关闭创建的好的管道
                 self::$process_list[$pid]->close();
-                unset(self::$process_list[$pid], self::$process_stdout[$pid]);
+                unset(self::$process_list[$pid], self::$process_stdout[$pid], self::$process_logWriteFile[$pid]);
             }
 
         });
@@ -205,11 +207,31 @@ class Process
 
         swoole_event_add($process->pipe, function ($pipe) use ($pid) {
             !isset(self::$process_stdout[$pid]) && self::$process_stdout[$pid] = "";
+            // 默认每次读取8192字节
             $tmp = self::$process_list[$pid]->read();
-            $len = mb_strlen(self::$process_stdout[$pid]);
-            // 如果一次性读取超过了最大长度，就截取
-            if(($length = (self::$max_stdout - $len)) > 0 && $tmp) {
-                self::$process_stdout[$pid] .= mb_substr($tmp, 0, $length);
+            if ($tmp) {
+                $len = mb_strlen(self::$process_stdout[$pid]);
+                // 如果一次性读取超过了最大长度，就截取
+                if(($length = (self::$max_stdout - $len)) > 0 && $tmp) {
+                    self::$process_stdout[$pid] .= mb_substr($tmp, 0, $length);
+                }
+
+                // 是否按运行Id生成日志文件并记录输出
+                if (isset(self::$process_logWriteFile[$pid])) {
+                    $task = self::$process_logWriteFile[$pid];
+                    $logPath = date('Y-m-d', $task['sec']) . DIRECTORY_SEPARATOR . $task['taskId'];
+                    Log::createLogDir($logPath);
+                    $logFilePath = Log::getLogFilePath($task['runId'], $logPath);
+                    $fp = Log::getFileHandle($logFilePath);
+                    if (!$fp) {
+                        log_warning('获取文件句柄失败: '.$logFilePath);
+                        return;
+                    }
+                    // 写入缓存区
+                    fwrite($fp, $tmp);
+                    // 刷进磁盘，阻塞操作
+                    fclose($fp);
+                }
             }
         });
 
@@ -220,6 +242,16 @@ class Process
             'start'      => microtime(true),
             'pipe'       => $process->pipe,
         ]);
+
+        // 是否记录输出到日志文件
+        if ($task['logOpt'] == Constants::LOG_OPT_WRITE_FILE) {
+            self::$process_logWriteFile[$pid] = [
+                'taskId'     => $task['taskId'],
+                'runId'      => $task['runId'],
+                'sec'        => $task['sec'],
+            ];
+        }
+
         self::$process_list[$pid] = $process;
 
         // 上报监控系统创建进程成功

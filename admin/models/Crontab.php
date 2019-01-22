@@ -20,6 +20,7 @@ use \Throwable;
  * @property string $command
  * @property integer $max_process_time
  * @property integer $timeout_opt
+ * @property integer $log_opt
  * @property integer $retries
  * @property integer $retry_interval
  * @property integer $status
@@ -36,6 +37,9 @@ class Crontab extends ActiveRecord
     const TIME_OUT_OPT_IGNORE = 0; // 超时 - 忽略
     const TIME_OUT_OPT_KILL = 1; // 超时 - 强杀
 
+    const LOG_OPT_IGNORE = 0; // 日志选项 - 忽略
+    const LOG_OPT_WRITE_FILE = 1; // 日志选项 - 写入文件
+
     /**
      * @inheritdoc
      */
@@ -51,9 +55,9 @@ class Crontab extends ActiveRecord
     {
         return [
             [['cid', 'name', 'rule', 'command'], 'required'],
-            [['cid', 'concurrency', 'max_process_time', 'retries', 'retry_interval', 'status', 'notice_way', 'create_time', 'update_time', 'timeout_opt'], 'integer'],
+            [['cid', 'concurrency', 'max_process_time', 'retries', 'retry_interval', 'status', 'notice_way', 'create_time', 'update_time', 'timeout_opt', 'log_opt'], 'integer'],
             // 最大执行时间、并发数、重试次数、重试时间间隔设置默认值
-            [['max_process_time', 'concurrency', 'retries', 'retry_interval', 'timeout_opt'], 'default', 'value' => 0],
+            [['max_process_time', 'concurrency', 'retries', 'retry_interval', 'timeout_opt', 'log_opt'], 'default', 'value' => 0],
             // 默认分钟级
             ['rule', 'default', 'value' => '* * * * *'],
             // 通知方式
@@ -125,6 +129,7 @@ class Crontab extends ActiveRecord
             'concurrency' => Yii::t('app', 'Concurrency'),
             'max_process_time' => Yii::t('app', 'Max Process Time'),
             'timeout_opt' => Yii::t('app', 'Time out option'),
+            'log_opt' => Yii::t('app', 'Log out option'),
             'retries' => Yii::t('app', 'Retries'),
             'retry_interval' => Yii::t('app', 'Retry interval'),
             'command' => Yii::t('app', 'Command'),

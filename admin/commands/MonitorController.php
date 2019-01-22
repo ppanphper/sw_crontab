@@ -293,6 +293,16 @@ class MonitorController extends Controller
      */
     protected function setProcessName($name, $separator = '|')
     {
-        swoole_set_process_name($this->_processNamePrefix . $separator . $name);
+        if (stristr(PHP_OS, 'DAR')) {
+            return;
+        }
+
+        $processNewName = $this->_processNamePrefix . $separator . $name;
+        if (function_exists('cli_set_process_title')) {
+            cli_set_process_title($processNewName);
+        }
+        else {
+            swoole_set_process_name($processNewName);
+        }
     }
 }

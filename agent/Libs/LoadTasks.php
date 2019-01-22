@@ -10,7 +10,7 @@
 
 namespace Libs;
 
-use \Swoole\Table;
+use \Swoole\Table as SwooleTable;
 
 class LoadTasks
 {
@@ -22,17 +22,18 @@ class LoadTasks
      * @var array
      */
     private static $column = [
-        'name'      => [Table::TYPE_STRING, 64], // crontab名称
-        'rule'      => [Table::TYPE_STRING, 1800], // crontab规则
-        'execNum'   => [Table::TYPE_INT, 2], // 并发数
-        'maxTime'   => [Table::TYPE_INT, 4], // 最大执行时间
-        'timeoutOpt'=> [Table::TYPE_INT, 1], // 超时选项 0=忽略 1=强杀
-        'runUser'   => [Table::TYPE_STRING, 255], // 运行时用户
-        'command'   => [Table::TYPE_STRING, 1536], // 命令 长度为字节 512 * 3
-        'retries'   => [Table::TYPE_INT, 2], // 重试次数
-        'retryInterval' => [Table::TYPE_INT, 4], // 重试间隔
-        'noticeWay' => [Table::TYPE_INT, 1], // 通知方式 0忽略 1邮件 2短信 3邮件+短信 4微信 5邮件+微信 6短信+微信 7所有方式
-        'updateTime' => [Table::TYPE_INT, 4], // 上一次更新时间
+        'name'      => [SwooleTable::TYPE_STRING, 64], // crontab名称
+        'rule'      => [SwooleTable::TYPE_STRING, 1800], // crontab规则
+        'execNum'   => [SwooleTable::TYPE_INT, 2], // 并发数
+        'maxTime'   => [SwooleTable::TYPE_INT, 4], // 最大执行时间
+        'timeoutOpt'=> [SwooleTable::TYPE_INT, 1], // 超时选项 0=忽略 1=强杀
+        'logOpt'    => [SwooleTable::TYPE_INT, 1], // 日志选项 0=忽略 1=按运行Id生成日志文件并写入
+        'runUser'   => [SwooleTable::TYPE_STRING, 255], // 运行时用户
+        'command'   => [SwooleTable::TYPE_STRING, 1536], // 命令 长度为字节 512 * 3
+        'retries'   => [SwooleTable::TYPE_INT, 2], // 重试次数
+        'retryInterval' => [SwooleTable::TYPE_INT, 4], // 重试间隔
+        'noticeWay' => [SwooleTable::TYPE_INT, 1], // 通知方式 0忽略 1邮件 2短信 3邮件+短信 4微信 5邮件+微信 6短信+微信 7所有方式
+        'updateTime' => [SwooleTable::TYPE_INT, 4], // 上一次更新时间
     ];
     private static $table;
 
@@ -77,7 +78,7 @@ class LoadTasks
      */
     private static function createConfigTable()
     {
-        self::$table = new Table(TASK_MAX_LOAD_SIZE);
+        self::$table = new SwooleTable(TASK_MAX_LOAD_SIZE);
         foreach (self::$column as $key => $v) {
             self::$table->column($key, $v[0], $v[1]);
         }
@@ -135,6 +136,7 @@ class LoadTasks
                         'execNum'   => $task['concurrency'],
                         'maxTime'   => $task['max_process_time'],
                         'timeoutOpt'=> $task['timeout_opt'],
+                        'logOpt'    => $task['log_opt'],
                         'runUser'   => $task['run_user'],
                         'command'   => $task['command'],
                         'retries'   => $task['retries'],

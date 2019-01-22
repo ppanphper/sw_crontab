@@ -67,7 +67,7 @@ class Constants
     /**
      * 任务命令解析正则
      */
-    const CMD_PARSE_PATTERN = '#\s*((?:"[^"]+?"|\'[^\']+?\'|[^\s])+)#';
+    const CMD_PARSE_PATTERN = '#\s*((?:"[^"]+?"|\'[^\']+?\'|\([^\)]+?\)|`[^`]+?`|[^\s])+)#';
 
     /**
      * 任务执行状态 0~255
@@ -163,6 +163,9 @@ class Constants
 
     const TIME_OUT_OPT_IGNORE = 0; // 超时 - 忽略
     const TIME_OUT_OPT_KILL = 1; // 超时 - 强杀
+
+    const LOG_OPT_IGNORE = 0; // 日志选项 - 忽略
+    const LOG_OPT_WRITE_FILE = 1; // 日志选项 - 按运行Id生成日志文件并写入
 
     /**======================================= 与Agent通信相关常量 ========================================*/
     // cmd for the server control

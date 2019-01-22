@@ -20,19 +20,28 @@ function log_message($level='Info', $message, $exceptionObject=null) {
     Log::write_log($level, $message, $exceptionObject);
 }
 
-function log_error() {
-    $params = func_get_args();
-    log_message('Error', ...$params);
+/**
+ * @param $message
+ * @param null $exceptionObject
+ */
+function log_error($message, $exceptionObject=null) {
+    log_message('Error', $message, $exceptionObject);
 }
 
-function log_warning() {
-    $params = func_get_args();
-    log_message('Warning', ...$params);
+/**
+ * @param $message
+ * @param null $exceptionObject
+ */
+function log_warning($message, $exceptionObject=null) {
+    log_message('Warning', $message, $exceptionObject);
 }
 
-function log_info() {
-    $params = func_get_args();
-    log_message('Info', ...$params);
+/**
+ * @param $message
+ * @param null $exceptionObject
+ */
+function log_info($message, $exceptionObject=null) {
+    log_message('Info', $message, $exceptionObject);
 }
 
 /**
