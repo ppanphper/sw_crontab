@@ -175,7 +175,7 @@ class LoadTasks
                 // 如果域记录时间与当前时间相差10分钟，就删除，以免无效记录过多
                 $invalidRecordTime = time() - Constants::REDIS_KEY_HASH_CRONTAB_CHANGE_FIELD_EXPIRE;
                 foreach($data as $id => $updateTime) {
-                    $prevUpdateTime = self::$table->get($id,['updateTime']);
+                    $prevUpdateTime = self::$table->get($id, 'updateTime');
                     // 如果不存在这个任务，或者更新时间大于上次更新时间
                     if(!$prevUpdateTime && $updateTime > $prevUpdateTime) {
                         $ids[] = $id;
