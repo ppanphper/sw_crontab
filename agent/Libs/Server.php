@@ -39,7 +39,7 @@ class Server extends ServerBase
     // 接收数据处理方法映射数组
     protected $receiveModeProcessMaps = array(
         Constants::SW_CONTROL_CMD => 'controlCommand',
-        Constants::SW_API_CMD   => 'apiCommand',
+        Constants::SW_API_CMD     => 'apiCommand',
     );
 
     public function __construct($host, $port = 0, $ssl = false)
@@ -101,10 +101,11 @@ class Server extends ServerBase
         ];
     }
 
-    public static function init() {
+    public static function init()
+    {
         parent::init();
         self::$_startMethodMaps = array_merge(self::$_startMethodMaps, [
-            'stats' => function($serverPID, $opt) {
+            'stats' => function ($serverPID, $opt) {
                 if (empty($serverPID) || !is_file(self::$statsPidFile)) {
                     exit("Server is not running\n");
                 }
@@ -171,9 +172,9 @@ class Server extends ServerBase
 
         Report::init();
         $monitorAlarmProcessNum = config_item('monitor_alarm_process_num', 1);
-        for($i=0; $i< $monitorAlarmProcessNum; $i++) {
-            $this->sw->addProcess(new SwooleProcess(function ($process) use($i) {
-                $process->name($this->_serverName . '|monitorAlarm|'.$i);
+        for ($i = 0; $i < $monitorAlarmProcessNum; $i++) {
+            $this->sw->addProcess(new SwooleProcess(function ($process) use ($i) {
+                $process->name($this->_serverName . '|monitorAlarm|' . $i);
                 Report::monitorAlarm();
             }));
         }
@@ -189,20 +190,20 @@ class Server extends ServerBase
         }));
         /** End */
 
-        if(self::$statsPidFile) {
+        if (self::$statsPidFile) {
             $this->sw->addProcess(new SwooleProcess(function ($process) {
                 $process->name($this->_serverName . '|listenPipeProcess');
                 file_put_contents(self::$statsPidFile, $process->pid);
                 SwooleProcess::signal(SIGUSR1, function ($sig) {
                     $tasks = LoadTasks::getTable();
                     $content = '';
-                    foreach($tasks as $id=>$task) {
-                        $content .= 'id = '.$id.'; task = '.var_export($task, true).PHP_EOL;
+                    foreach ($tasks as $id => $task) {
+                        $content .= 'id = ' . $id . '; task = ' . var_export($task, true) . PHP_EOL;
                     }
-                    $content .= 'current task:'.PHP_EOL;
+                    $content .= 'current task:' . PHP_EOL;
                     $tasks = Tasks::$table;
-                    foreach($tasks as $task) {
-                        $content .= 'taskId = '.$task['taskId'].'; sec = '.date('Y-m-d H:i:s', $task['sec']).'; retries = '.$task['retries'].PHP_EOL;
+                    foreach ($tasks as $task) {
+                        $content .= 'taskId = ' . $task['taskId'] . '; sec = ' . date('Y-m-d H:i:s', $task['sec']) . '; retries = ' . $task['retries'] . PHP_EOL;
                     }
                     self::formatOutput($content);
                 });
@@ -295,20 +296,21 @@ class Server extends ServerBase
                         'sec'     => $sec,
                         'runId'   => $runId,
                         'retries' => 0, // 当前第几次重试
+                        'logOpt'  => $task['logOpt'],
                     ];
                     // 当前第几次重试
-                    if(isset($item['currentRetries'])) {
+                    if (isset($item['currentRetries'])) {
                         $tmp['retries'] = $item['currentRetries'];
-                        $msg = '第'.$item['currentRetries'].'次重试' . PHP_EOL . $msg;
+                        $msg = '第' . $item['currentRetries'] . '次重试' . PHP_EOL . $msg;
                     }
 
                     //正在运行标示
                     if (Tasks::$table->exist($runId)) {
                         Tasks::$table->set($runId, [
                             'runStatus' => LoadTasks::RUN_STATUS_START,
-                            'runId' => $runId,
+                            'runId'     => $runId,
                             // 初始化，以免重试的时候值没有变更
-                            'pid' => 0,
+                            'pid'       => 0,
                         ]);
                     }
 
@@ -338,7 +340,8 @@ class Server extends ServerBase
         }
     }
 
-    public static function setStatsPidFile($statsPidFile) {
+    public static function setStatsPidFile($statsPidFile)
+    {
         self::$statsPidFile = $statsPidFile;
     }
 
@@ -403,7 +406,7 @@ class Server extends ServerBase
 
         $pack = Packet::packFormat('unknown command!', Constants::STATUS_CODE_UNKNOW_CMD);
 
-        if($data['cmd'] === 'PING') {
+        if ($data['cmd'] === 'PING') {
             $pack = Packet::packFormat('PONG', Constants::STATUS_CODE_SUCCESS);
         }
         return $this->send($task['fd'], $pack);
@@ -468,17 +471,17 @@ class Server extends ServerBase
         // 上报的服务器IP
         while (true) {
             $fieldValue = [
-                'time' => time(),
+                'time'               => time(),
                 // 本节点总任务数
-                'task_total' => count(LoadTasks::getTable()),
+                'task_total'         => count(LoadTasks::getTable()),
                 // 当前这一分钟待执行的任务数
                 'current_task_count' => count(Tasks::getTasks()),
             ];
-            if(isLinuxOS()) {
+            if (isLinuxOS()) {
                 $fieldValue = array_merge($fieldValue, [
-                    'cpuInfo' => getCoreInformation(),
+                    'cpuInfo'    => getCoreInformation(),
                     'sysLoadAvg' => sys_getloadavg(),
-                    'memInfo' => getMemoryInformation([
+                    'memInfo'    => getMemoryInformation([
                         'MemTotal',
                         'MemFree',
                         'Buffers',

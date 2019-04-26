@@ -8,7 +8,7 @@ return [
     'pconnect'         => true,
     'timeout'          => 0.5,
     // key前缀
-    'prefix'           => 'PHP:',
+    'prefix'           => 'SWC:',
 
     /**
      * 集群模式

@@ -53,7 +53,9 @@ $config = [
             'targets'    => [
                 [
                     'class'  => 'yii\log\FileTarget',
+					'logFile' => '/tmp/swc_app.log',
                     'levels' => ['error', 'warning'],
+					'logVars' => ['_GET', '_POST'],
                 ],
             ],
         ],

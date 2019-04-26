@@ -372,6 +372,7 @@ DROP TABLE IF EXISTS `category`;
 CREATE TABLE `category` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL DEFAULT '',
+  `status` tinyint(3) NOT NULL DEFAULT '1' COMMENT '状态 0=停用 1=启用 -1=删除',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -390,6 +391,7 @@ CREATE TABLE `crontab` (
   `command` varchar(512) NOT NULL COMMENT '命令',
   `max_process_time` int(11) unsigned NOT NULL DEFAULT '600' COMMENT '最大执行时间',
   `timeout_opt` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '超时处理 0=忽略 1=强制关闭',
+  `log_opt` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '日志选项 0=不记录日志 1=记录日志到文件',
   `retries` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '重试次数',
   `retry_interval` int(11) unsigned NOT NULL DEFAULT '0' COMMENT '重试间隔时间',
   `status` tinyint(2) NOT NULL DEFAULT '0' COMMENT '-1删除 0停止 1启用',

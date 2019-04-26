@@ -124,23 +124,23 @@ class RedisClient
      */
     protected $_funcTable = [
         // 增量计数器，第一次增量计数的时候，给key加上过期时间，解决并发问题 eg: evalScript('incr', 'key', expireTime)
-        'incr' => [
-            'sha1' => '727c0136efce8e1e7b34a5d1a29c87b77a9348ff',
+        'incr'       => [
+            'sha1'   => '727c0136efce8e1e7b34a5d1a29c87b77a9348ff',
             'script' => "local count = redis.call('incr',KEYS[1]); if tonumber(count) == 1 then redis.call('expire',KEYS[1],ARGV[1]); end; return count;"
         ],
         // 增量计数器，并在增量值超过最大值时，重置为0 eg: evalScript('incr_reset', 'key', [maxCounter，expireTime])
         'incr_reset' => [
-            'sha1' => '064e70749675e1c315270a18e5c38ae3f314498a',
+            'sha1'   => '064e70749675e1c315270a18e5c38ae3f314498a',
             'script' => "local count = redis.call('incr',KEYS[1]); if tonumber(count) == 1 then redis.call('expire',KEYS[1],ARGV[2]); end; if tonumber(count) > tonumber(ARGV[1]) then redis.call('set', KEYS[1], 0); return 0; end; return count;",
         ],
         // 增量计数器，如果当前值没有大于限定值，才可以加一并返回[1, 累加后的值]，否则返回[0, 当前值] eg: evalScript('incr_max', 'key', [maxCounter, expireTime])
-        'incr_max' => [
-            'sha1' => '56a52dbab84bd9b0fc0a8330caff45c31d2df9ab',
+        'incr_max'   => [
+            'sha1'   => '56a52dbab84bd9b0fc0a8330caff45c31d2df9ab',
             'script' => "local count = redis.call('get',KEYS[1]); if ( count == false or tonumber(count) < tonumber(ARGV[1]) ) then count = redis.call('incr', KEYS[1]); if count == 1 then redis.call('expire',KEYS[1],ARGV[2]); end; return {1, count}; else return {0, count}; end;",
         ],
         // 存在才将 key 中储存的数字值减一 eg: evalScript('decr_exist', 'key')
         'decr_exist' => [
-            'sha1' => 'b8fdb9f741719829325bcc7253b93eed7b526ccb',
+            'sha1'   => 'b8fdb9f741719829325bcc7253b93eed7b526ccb',
             'script' => "local count = redis.call('exists',KEYS[1]); if tonumber(count) == 1 then count = redis.call('decr',KEYS[1]); end; return count;"
         ],
     ];
@@ -180,9 +180,9 @@ class RedisClient
 
         // 如果是PHPRedis 或者 PHPRedis集群
         $this->_is_phpRedis = in_array(self::$_config['client_type'], [self::CLIENT_TYPE_PHP_REDIS, self::CLIENT_TYPE_PHP_REDIS_CLUSTER], true);
-        if($this->_is_phpRedis) {
+        if ($this->_is_phpRedis) {
             // 是否支持Redis
-            if(!$this->is_supported()) {
+            if (!$this->is_supported()) {
                 throw new Exception("Redis class is not exists,Please make sure is installed!");
             }
         }
@@ -220,9 +220,10 @@ class RedisClient
      *
      * @return RedisClient
      */
-    public static function getInstance() {
+    public static function getInstance()
+    {
         static $redisObject = null;
-        if($redisObject === null) {
+        if ($redisObject === null) {
             // 加载Redis配置文件
             $redisConfig = config_item(null, null, 'redis');
 
@@ -373,19 +374,20 @@ class RedisClient
      * client->evalScript('incr_max', 'test', [maxCounter, 100]); // incr_max, key, [最大值, 过期时间]
      *
      */
-    public function evalScript($scriptKey, $keys, $args=[]) {
+    public function evalScript($scriptKey, $keys, $args = [])
+    {
         // 如果不是用PHPRedis扩展
-        if(!$this->_is_phpRedis) {
+        if (!$this->_is_phpRedis) {
             // 如果是incr，就用另外的方式实现
-            if($scriptKey == 'incr') {
+            if ($scriptKey == 'incr') {
                 return $this->setExpireIncr($keys, $args);
             }
             throw new Exception(__METHOD__ . ' 该客户端暂不支持该方式，请使用PHPRedis客户端');
         }
-        if(!isset($this->_funcTable[$scriptKey]) || empty($this->_funcTable[$scriptKey]['script'])) {
-            throw new Exception(__METHOD__ . ' 请先配置'.$scriptKey.'脚本');
+        if (!isset($this->_funcTable[$scriptKey]) || empty($this->_funcTable[$scriptKey]['script'])) {
+            throw new Exception(__METHOD__ . ' 请先配置' . $scriptKey . '脚本');
         }
-        if(empty($this->_funcTable[$scriptKey]['sha1'])) {
+        if (empty($this->_funcTable[$scriptKey]['sha1'])) {
             $this->_funcTable[$scriptKey]['sha1'] = sha1($this->_funcTable[$scriptKey]['script']);
         }
         $sha1 = $this->_funcTable[$scriptKey]['sha1'];
@@ -393,41 +395,38 @@ class RedisClient
         try {
             if ($this->getHandle() === null) throw new Exception('Cache: Redis connection failed. Check your configuration.');
 
-            if(!is_array($keys)) {
+            if (!is_array($keys)) {
                 $keys = [$keys];
-            }
-            else {
+            } else {
                 // 不需要键名索引，用数字重新建立索引
                 $keys = array_values($keys);
             }
-            if(!is_array($args)) {
+            if (!is_array($args)) {
                 $args = [$args];
-            }
-            else {
+            } else {
                 // 不需要键名索引，用数字重新建立索引
                 $args = array_values($args);
             }
             $keyCount = count($keys);
             $args = array_merge($keys, $args);
-            for($i =0; $i < 2; $i++) {
+            for ($i = 0; $i < 2; $i++) {
                 $result = $this->_redis->evalSha($sha1, $args, $keyCount);
-                if($result === false && $i === 0) {
+                if ($result === false && $i === 0) {
                     $errorMsg = $this->_redis->getLastError();
                     $this->_redis->clearLastError();
                     // 该脚本不存在该节点上，需要执行load
-                    if(stripos($errorMsg, 'NOSCRIPT') !== false) {
+                    if (stripos($errorMsg, 'NOSCRIPT') !== false) {
                         // 单机
-                        if(self::$_config['client_type'] == self::CLIENT_TYPE_PHP_REDIS) {
+                        if (self::$_config['client_type'] == self::CLIENT_TYPE_PHP_REDIS) {
                             $loadParams = [
                                 'load',
                                 $this->_funcTable[$scriptKey]['script']
                             ];
-                        }
-                        // 集群
+                        } // 集群
                         else {
                             // 取Key用来定位节点
                             $key = $keys;
-                            if(is_array($keys)) {
+                            if (is_array($keys)) {
                                 $key = $keys[0];
                             }
                             $loadParams = [
@@ -439,8 +438,8 @@ class RedisClient
                         // load脚本
                         $serverSha1 = $this->_redis->script(...$loadParams);
                         // 在开发阶段解决这个错误
-                        if($serverSha1 !== $sha1) {
-                            throw new Exception($scriptKey.'脚本的sha1与服务端返回的sha1不一致'.$sha1.'=='.$serverSha1, 999);
+                        if ($serverSha1 !== $sha1) {
+                            throw new Exception($scriptKey . '脚本的sha1与服务端返回的sha1不一致' . $sha1 . '==' . $serverSha1, 999);
                         }
                         continue;
                     }
@@ -449,11 +448,11 @@ class RedisClient
             }
         } catch (Exception $e) {
             // 如果是开发阶段能解决的错误，就抛出去
-            if($e->getCode() === 999) {
+            if ($e->getCode() === 999) {
                 throw new Exception($e->getMessage(), $e->getCode());
             }
             $result = false;
-            log_warning(__METHOD__.' = '. $e->getMessage());
+            log_warning(__METHOD__ . ' = ' . $e->getMessage());
         }
         return $result;
     }

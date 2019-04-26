@@ -118,6 +118,7 @@ return [
     'Save data failed'                                             => '保存数据失败',
     'The unit is seconds'                                          => '单位是秒',
     'Time out option' => '执行超时选项',
+    'Log out option' => '日志输出选项',
     'The default ignore' => '默认忽略',
 
     'Task ready start'              => '任务准备开始',
@@ -156,7 +157,8 @@ return [
     'Please enter the new password'                                             => '请输入新密码',
     'Please enter the confirm password'                                         => '请输入确认密码',
     'Welcome!'                                                                  => '欢迎',
-    'Default: root. Please note that other users may not have log permissions.' => '默认: root。 请注意，其他用户可能没有写日志权限。',
+    'Default: root. Note: that other users may not have log permissions.' => '默认: root; 注意: 其他用户可能没有写日志权限。',
+    'Note: Please confirm whether user have write log permissions.' => '注意: 请确认用户是否具有写日志权限。',
     'Search condition' => '搜索条件',
     'Click to view the list of tasks under the node' => '单击此处查看节点下的任务列表',
     'No heartbeat, but the nodes are normal' => '没有心跳，但节点正常',
@@ -173,4 +175,5 @@ return [
     'Zero means no retry' => '0表示不重试',
     'Zero means immediate retry' => '0表示立即重试',
     'Failed validation form' => '验证表单失败',
+    'Generate the file by run id and write' => '按运行Id生成文件并写入',
 ];

@@ -12,6 +12,13 @@ $this->title = Yii::t('app', Yii::$app->name);
     <div class="">
         <h3>更新公告</h3>
         <div>
+            <div><h4>2019-01-22</h4></div>
+            <div>新增</div>
+            <ul>
+                <li>定时任务支持按运行Id生成日志文件并记录脚本输出内容，日志路径存放在agent节点下的log_path/date(Ymd)/定时任务Id/运行Id.log</li>
+            </ul>
+        </div>
+        <div>
             <div><h4>2018-07-13</h4></div>
             <div>新增</div>
             <ul>

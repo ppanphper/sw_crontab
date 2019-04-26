@@ -23,7 +23,7 @@ return [
         '192.168.19.20:6379', // master
         '192.168.19.20:6380',
     ],
-    'prefix'            => 'PHP:',
+    'prefix'            => 'SWC:',
     'database'          => 0,
     'connectionTimeout' => 1,
     'dataTimeout'       => 0.5,

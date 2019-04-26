@@ -54,7 +54,7 @@ SWC(Swoole-Crontab)分布式定时任务系统
 
 2.安装代码依赖包:
 
-    1、curl -sS https://getcomposer.org/installer | /wdzj/lnmp/php5.6.11/bin/php
+    1、curl -sS https://getcomposer.org/installer | /path/to/php
     2、mv composer.phar /usr/local/bin/composer
     3、分别进入前后端项目目录: cd /path/to/admin 和 cd /path/to/agent
     4、执行安装依赖的类库: /usr/local/bin/php /usr/local/bin/composer install
@@ -96,4 +96,3 @@ SWC(Swoole-Crontab)分布式定时任务系统
 - [ ] 任务工作流: 后面的任务依赖前一个任务的执行结果(任务执行顺序?)。
 - [ ] 灾难转移: 如果任务允许多台服务器执行，本次在这台服务器执行失败，可以转到其他机器再次尝试执行
 - [ ] 管理后台手动指定机器运行任务
-- [ ] 支持 > | >> /path/to/log 2>&1 语法

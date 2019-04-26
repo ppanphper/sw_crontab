@@ -8,6 +8,7 @@
  */
 
 namespace Libs;
+
 use \Swoole\Client as SwooleClient;
 
 class Report
@@ -39,28 +40,29 @@ class Report
 
     protected static $_contentTemplateMaps = [
         self::CODE_CREATE_PROCESS_FAILED => '执行任务[{name}]创建进程失败 taskId: {tid}; runId: {rid}; 时间: [{date}]',
-        self::CODE_EXEC_FAILED => '执行任务[{name}]失败 taskId: {tid}; runId: {rid}; code:{code}; signal:{signal} 时间: [{date}]',
+        self::CODE_EXEC_FAILED           => '执行任务[{name}]失败 taskId: {tid}; runId: {rid}; code:{code}; signal:{signal} 时间: [{date}]',
     ];
 
-    public static function init() {
+    public static function init()
+    {
         // 初始化日志队列内存表
         self::$_logChannel = new LogChannel(1024 * 1024 * 100);
 
         $config = config_item('report_monitor');
 
-        if(!empty($config['host'])) {
+        if (!empty($config['host'])) {
             self::$_host = $config['host'];
         }
 
-        if(!empty($config['port'])) {
+        if (!empty($config['port'])) {
             self::$_host = $config['port'];
         }
 
-        if(!empty($config['prefix'])) {
+        if (!empty($config['prefix'])) {
             self::$_prefix = $config['prefix'];
         }
 
-        if(empty(self::$_host)) {
+        if (empty(self::$_host)) {
             self::$_enabled = false;
         }
 
@@ -72,6 +74,7 @@ class Report
 
     /**
      * 上报Key到监控系统
+     *
      * @param string|array $data
      *
      * 'metric' => '',
@@ -83,11 +86,11 @@ class Report
      */
     public static function monitor($data)
     {
-        if(self::$_enabled) {
-            if(empty(self::$_client)) {
+        if (self::$_enabled) {
+            if (empty(self::$_client)) {
                 self::$_client = new SwooleClient(SWOOLE_SOCK_UDP);
             }
-            if(!is_array($data)) {
+            if (!is_array($data)) {
                 $data = [
                     'metric' => $data,
                 ];
@@ -106,12 +109,12 @@ class Report
              * tags: 一组逗号分割的键值对, 对metric进一步描述和细化, 可以是空字符串. 比如idc=lg，比如service=xbox等，多个tag之间用逗号分割
              */
             $format = [
-                'metric' => '',
-                'endpoint' => self::$_prefix,
-                'step' => 60,
+                'metric'      => '',
+                'endpoint'    => self::$_prefix,
+                'step'        => 60,
                 'counterType' => 'COUNTER',
-                'value' => 1,
-                'tags' => '',
+                'value'       => 1,
+                'tags'        => '',
             ];
             $data = array_merge($format, $data);
             $key = json_encode($data, JSON_UNESCAPED_UNICODE);
@@ -131,10 +134,10 @@ class Report
     {
         $data = [
             'taskId' => $taskId,
-            'runId' => $runId,
-            'time' => microtime(true),
-            'type' => self::CODE_CREATE_PROCESS_FAILED,
-            'ip' => SERVER_INTERNAL_IP,
+            'runId'  => $runId,
+            'time'   => microtime(true),
+            'type'   => self::CODE_CREATE_PROCESS_FAILED,
+            'ip'     => SERVER_INTERNAL_IP,
         ];
         return self::$_logChannel->push($data);
     }
@@ -150,21 +153,21 @@ class Report
      *
      * @return bool
      */
-    public static function taskExecFailed($taskId, $runId, $code, $signal, $msg='')
+    public static function taskExecFailed($taskId, $runId, $code, $signal, $msg = '')
     {
         // 获取当前第几次重试，假如runId不存在，也会返回0
         $retries = Tasks::$table->get($runId, 'retries');
         $data = [
-            'taskId' => $taskId,
-            'runId' => $runId,
-            'time' => microtime(true),
-            'type' => self::CODE_EXEC_FAILED,
-            'code' => $code,
-            'signal' => $signal,
-            'msg' => $msg,
+            'taskId'  => $taskId,
+            'runId'   => $runId,
+            'time'    => microtime(true),
+            'type'    => self::CODE_EXEC_FAILED,
+            'code'    => $code,
+            'signal'  => $signal,
+            'msg'     => $msg,
             'retries' => $retries,
-            'ip' => SERVER_INTERNAL_IP,
-            'port' => SERVER_PORT,
+            'ip'      => SERVER_INTERNAL_IP,
+            'port'    => SERVER_PORT,
         ];
         return self::$_logChannel->push($data);
     }
@@ -174,7 +177,7 @@ class Report
      */
     public static function monitorAlarm()
     {
-        while(true) {
+        while (true) {
             self::consumeQueue();
             sleep(1);
         }
@@ -200,54 +203,52 @@ class Report
      *
      * @throws \Exception
      */
-    public static function notify($content, $taskId=0, $noticeWay=Constants::NOTICE_WAY_SEND_MAIL) {
+    public static function notify($content, $taskId = 0, $noticeWay = Constants::NOTICE_WAY_SEND_MAIL)
+    {
         $boolean = false;
-        if($noticeWay == Constants::NOTICE_WAY_IGNORE) {
-            log_info(__METHOD__ . ' 通知方式: 忽略，不通知');
-            return $boolean;
-        }
+        // 所有支持的通知方式
+        $noticeWayMaps = Constants::NOTICE_WAY_MAPS;
         $noticeWay = intval($noticeWay);
-        if(empty($noticeWay)) {
-            log_warning(__METHOD__ . ' 通知方式未知: '.var_export($noticeWay, true));
+        if (!isset($noticeWayMaps[$noticeWay])) {
+            log_warning(__METHOD__ . ' 通知方式未知: taskId = ' . $taskId . '; noticeWay = ' . var_export($noticeWay, true) . '; content = ' . var_export($content, true));
             return $boolean;
         }
         // 有负责人
-        if(!empty($taskId)) {
+        if (!empty($taskId)) {
             try {
                 $userData = getDBInstance()
                     ->from('via_table a')
                     ->select(null)
                     ->select('b.nickname, b.mobile, b.email')
-                    ->innerJoin('user b ON b.id = a.bid AND a.type = '.Constants::TYPE_CRONTAB_OWNER)->where([
-                        'a.aid' => $taskId,
+                    ->innerJoin('user b ON b.id = a.bid AND a.type = ' . Constants::TYPE_CRONTAB_OWNER)->where([
+                        'a.aid'    => $taskId,
                         'b.status' => 1,
                     ])->fetchAll();
             } catch (\Exception $e) {
-                log_error(__METHOD__.' 查用户信息失败: '.$e->getMessage());
+                log_error(__METHOD__ . ' 查用户信息失败: taskId = ' . $taskId . '; errorMsg = ' . $e->getMessage());
             }
         }
         // 没有查到负责人信息
-        if(empty($userData)) {
-            log_warning(__METHOD__.' 查不到用户信息: 任务Id = ' . $taskId.'; 通知系统管理人员');
+        if (empty($userData)) {
+            log_warning(__METHOD__ . ' 查不到用户信息: taskId = ' . $taskId . '; 通知系统管理人员');
             $userData = config_item('system_manage_notice_address');
         }
         $to = $cc = [];
 
         // 发送邮件
-        if($noticeWay & Constants::NOTICE_WAY_SEND_MAIL) {
+        if ($noticeWay & Constants::NOTICE_WAY_SEND_MAIL) {
             $cc = config_item('system_manage_email_address');
         }
 
-        foreach($userData as $user) {
+        foreach ($userData as $user) {
 
             // 发送邮件
-            if($noticeWay & Constants::NOTICE_WAY_SEND_MAIL) {
+            if ($noticeWay & Constants::NOTICE_WAY_SEND_MAIL) {
                 // 邮箱为空，跳过不处理
-                if(!empty($user['email'])) {
-                    if(!empty($user['name'])) {
+                if (!empty($user['email'])) {
+                    if (!empty($user['name'])) {
                         $to[$user['name']] = $user['email'];
-                    }
-                    else {
+                    } else {
                         $to[] = $user['email'];
                     }
                 }
@@ -260,7 +261,7 @@ class Report
 //			if($noticeWay & Constants::NOTICE_WAY_SEND_WECHAT) {}
         }
 
-        if($to) {
+        if ($to) {
             $boolean = sendMail(config_item('system_name', 'SWC系统') . '告警', $content, $to, $cc);
         }
         return $boolean;
@@ -269,20 +270,25 @@ class Report
     /**
      * 消费告警队列
      */
-    private static function consumeQueue() {
+    private static function consumeQueue()
+    {
         $dateFormat = config_item('default_date_format', 'Y-m-d H:i:s');
         $stats = self::$_logChannel->stats();
         $loadTasksTable = LoadTasks::getTable();
-        if($stats['queue_num'] > 0) {
-            for($i=0; $i < $stats['queue_num']; $i++) {
+        if ($stats['queue_num'] > 0) {
+            for ($i = 0; $i < $stats['queue_num']; $i++) {
                 $data = self::$_logChannel->pop();
-                if($data !== false) {
+                if ($data !== false) {
                     $task = $loadTasksTable->get($data['taskId']);
                     // 任务被删除
-                    if(empty($task)) {
+                    if (empty($task)) {
                         $task = [
                             'name' => '未知任务',
                         ];
+                    }
+                    // 通知方式忽略
+                    if (isset($task['noticeWay']) && $task['noticeWay'] == Constants::NOTICE_WAY_IGNORE) {
+                        continue;
                     }
                     $data['date'] = date($dateFormat, $data['time']);
                     $content = self::formatMessage($task, $data);
@@ -290,9 +296,9 @@ class Report
                         $boolean = self::notify($content, $data["taskId"], $task['noticeWay']);
                     } catch (\Exception $e) {
                         $boolean = false;
-                        $content .= ' Error = '.$e->getMessage();
+                        $content .= ' Error = ' . $e->getMessage();
                     }
-                    if(!$boolean) {
+                    if (!$boolean) {
                         // 根据返回结果
                         $content = '通知[失败] 内容: ' . $content;
                         log_warning($content);
@@ -308,52 +314,52 @@ class Report
      *
      * @return string
      */
-    private static function formatMessage($task, $data) {
+    private static function formatMessage($task, $data)
+    {
         $template = TPL_PATH . '/Email/simple_table.php';
         $agentName = LoadTasks::getAgentName();
         // 创建进程失败
-        if($data['type'] == self::CODE_CREATE_PROCESS_FAILED) {
+        if ($data['type'] == self::CODE_CREATE_PROCESS_FAILED) {
             $tVar = [
-                'title' => '任务['.$task["name"].']创建进程失败',
-                'data' => [
-                    '任务Id' => $data['taskId'],
-                    '运行Id' => $data['runId'],
-                    '执行节点' => $agentName,
-                    '规则' => $task['rule'],
-                    '命令' => $task['command'],
+                'title' => '任务[' . $task["name"] . ']创建进程失败',
+                'data'  => [
+                    '任务Id'   => $data['taskId'],
+                    '运行Id'   => $data['runId'],
+                    '执行节点'   => $agentName,
+                    '规则'     => $task['rule'],
+                    '命令'     => $task['command'],
                     '最大执行时间' => $task['maxTime'],
-                    '重试次数' => $task['retries'],
-                    '重试间隔' => $task['retryInterval'],
-                    '时间' => $data['date'],
+                    '重试次数'   => $task['retries'],
+                    '重试间隔'   => $task['retryInterval'],
+                    '时间'     => $data['date'],
                 ]
             ];
-        }
-        // 执行失败
+        } // 执行失败
         else {
             $codeMaps = Constants::CUSTOM_CODE_MAPS;
             // 状态码描述
             $codeDesc = isset($codeMaps[$data['code']]) ? $codeMaps[$data['code']] : $data['code'];
             $tVar = [
-                'title' => '任务['.$task["name"].']执行失败',
-                'data' => [
-                    '任务Id' => $data['taskId'],
-                    '运行Id' => $data['runId'],
-                    '执行节点' => $agentName,
-                    '规则' => $task['rule'],
-                    '命令' => $task['command'],
-                    '状态码' => '<strong style="color:red;">'.$codeDesc.'</strong>',
+                'title' => '任务[' . $task["name"] . ']执行失败',
+                'data'  => [
+                    '任务Id'   => $data['taskId'],
+                    '运行Id'   => $data['runId'],
+                    '执行节点'   => $agentName,
+                    '规则'     => $task['rule'],
+                    '命令'     => $task['command'],
+                    '状态码'    => '<strong style="color:red;">' . $codeDesc . '</strong>',
                     '最大执行时间' => $task['maxTime'],
-                    '重试次数' => $task['retries'],
-                    '重试间隔' => $task['retryInterval'],
-                    '信号' => $data['signal'],
-                    '时间' => $data['date'],
+                    '重试次数'   => $task['retries'],
+                    '重试间隔'   => $task['retryInterval'],
+                    '信号'     => $data['signal'],
+                    '时间'     => $data['date'],
                 ],
             ];
-            if($data['retries'] > 0) {
-                $tVar['data']['当前重试'] = '第'.$data['retries'].'次';
+            if ($data['retries'] > 0) {
+                $tVar['data']['当前重试'] = '第' . $data['retries'] . '次';
             }
-            if($data['msg']) {
-                $tVar['data']['输出'] = str_replace(["\r\n","\n"], '<br />', $data['msg']);
+            if ($data['msg']) {
+                $tVar['data']['输出'] = str_replace(["\r\n", "\n"], '<br />', $data['msg']);
             }
         }
         $content = fetchView($template, $tVar);
@@ -363,7 +369,8 @@ class Report
     /**
      *
      */
-    public static function shutdown() {
+    public static function shutdown()
+    {
         self::consumeQueue();
     }
 }
