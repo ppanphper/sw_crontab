@@ -61,7 +61,7 @@ class Tasks
                 // 解析crontab规则
                 $ret = ParseCrontab::parse($task["rule"], $time);
                 if ($ret === false) {
-                    log_error(ParseCrontab::$error);
+                    logError(ParseCrontab::$error);
                     continue;
                 }
                 if (empty($ret)) {

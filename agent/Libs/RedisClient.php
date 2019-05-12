@@ -225,7 +225,7 @@ class RedisClient
         static $redisObject = null;
         if ($redisObject === null) {
             // 加载Redis配置文件
-            $redisConfig = config_item(null, null, 'redis');
+            $redisConfig = configItem(null, null, 'redis');
 
             // 初始化Redis客户端
             $redisObject = new self($redisConfig);
@@ -353,7 +353,7 @@ class RedisClient
             }
         } catch (Exception $e) {
             $result = false;
-            log_warning(__METHOD__ . ' = ' . $e->getMessage());
+            logWarning(__METHOD__ . ' = ' . $e->getMessage());
         }
         return $result;
     }
@@ -452,7 +452,7 @@ class RedisClient
                 throw new Exception($e->getMessage(), $e->getCode());
             }
             $result = false;
-            log_warning(__METHOD__ . ' = ' . $e->getMessage());
+            logWarning(__METHOD__ . ' = ' . $e->getMessage());
         }
         return $result;
     }
@@ -569,6 +569,6 @@ class RedisClient
      */
     public function logWarningMessage($content)
     {
-        log_warning($content);
+        logWarning($content);
     }
 }

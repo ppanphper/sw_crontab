@@ -293,7 +293,7 @@ class MonitorController extends Controller
      */
     protected function setProcessName($name, $separator = '|')
     {
-        if (stristr(PHP_OS, 'DAR')) {
+        if (CommonHelper::isMacOS()) {
             return;
         }
 

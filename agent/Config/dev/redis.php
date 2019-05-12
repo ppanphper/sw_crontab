@@ -1,7 +1,7 @@
 <?php
 return [
     'socket_type' => 'tcp',
-    'prefix'      => 'PHP:',
+    'prefix'      => 'SWC:',
     'host'        => '127.0.0.1',
     'password'    => null,
     'port'        => 6379,

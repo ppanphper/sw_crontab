@@ -150,7 +150,7 @@ $config = [
         ],
     ],
     'as access'      => [
-        'class'        => 'app\components\AccessControl',
+        'class'        => 'app\components\mdm\admin\components\AccessControl',
         'allowActions' => [
             //这里是允许访问的action
             //controller/action

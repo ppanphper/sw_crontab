@@ -32,7 +32,8 @@ $config = [
     'sourceLanguage' => 'en-US',
     'components'          => [
         'cache'     => [
-            'class' => 'yii\caching\FileCache',
+            'class'     => 'ppanphper\redis\Cache',
+            'keyPrefix' => 'Cache:',
         ],
         'log'       => [
             'targets' => [

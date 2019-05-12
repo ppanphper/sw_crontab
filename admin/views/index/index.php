@@ -12,6 +12,17 @@ $this->title = Yii::t('app', Yii::$app->name);
     <div class="">
         <h3>更新公告</h3>
         <div>
+            <div><h4>2019-05-12</h4></div>
+            <div>修复</div>
+            <ul>
+                <li>兼容linux shell脚本语法</li>
+                <li>修复MacOS无法启动agent的问题</li>
+                <li>修复yii2-admin里的Configs类初始化记录error日志的问题</li>
+                <li>修复缺少agent vendor/envms/fluentpdo组件的无法启动agent问题</li>
+                <li>修复其他一些问题</li>
+            </ul>
+        </div>
+        <div>
             <div><h4>2019-01-22</h4></div>
             <div>新增</div>
             <ul>

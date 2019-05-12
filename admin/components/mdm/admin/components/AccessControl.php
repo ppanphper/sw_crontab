@@ -1,9 +1,8 @@
 <?php
 
-namespace app\components;
+namespace app\components\mdm\admin\components;
 
 use Yii;
-use mdm\admin\components\Helper;
 
 /**
  * 扩展rbac访问控制，只有启用的用户才可以访问

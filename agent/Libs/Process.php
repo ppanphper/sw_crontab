@@ -199,7 +199,7 @@ class Process
 
             // 上报监控系统创建进程失败
             Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_FAILED . '.' . $task['taskId']);
-            log_error(__METHOD__ . ' 创建进程失败 errorMsg = ' . swoole_strerror(swoole_errno()));
+            logError(__METHOD__ . ' 创建进程失败 errorMsg = ' . swoole_strerror(swoole_errno()));
             return false;
         }
 
@@ -222,7 +222,7 @@ class Process
                     $logFilePath = Log::getLogFilePath($task['runId'], $logPath);
                     $fp = Log::getFileHandle($logFilePath);
                     if (!$fp) {
-                        log_warning('获取文件句柄失败: ' . $logFilePath);
+                        logWarning('获取文件句柄失败: ' . $logFilePath);
                         return;
                     }
                     // 写入缓存区
@@ -317,7 +317,7 @@ class Process
         // 如果设置了并发数限制, 并且不是重试(重试不占并发数)
         if ($this->task['execNum'] && empty($this->task['retries'])) {
             // 加载Redis配置文件
-            $redisConfig = config_item(null, null, 'redis');
+            $redisConfig = configItem(null, null, 'redis');
             $redisObject = new RedisClient($redisConfig);
             // 如果是限制并发任务，开始申请执行权限
             $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $this->task['taskId'] . ':' . $this->task['sec'];
@@ -341,7 +341,7 @@ class Process
         Report::monitor(Constants::MONITOR_KEY_CHILD_PROCESS_STARTS_RUN . '.' . $this->task['taskId']);
         DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '任务开始执行');
 
-        log_info('任务开始执行' . (!empty($this->task['retries']) ? '(第' . $this->task['retries'] . '次重试)' : '') . ': Id = ' . $this->task['taskId'] . '; runId = ' . $this->task['runId'] . '; command = ' . $this->task['command']);
+        logInfo('任务开始执行' . (!empty($this->task['retries']) ? '(第' . $this->task['retries'] . '次重试)' : '') . ': Id = ' . $this->task['taskId'] . '; runId = ' . $this->task['runId'] . '; command = ' . $this->task['command']);
         if (isWindowsOS()) {
             $bool = $process->exec('cmd', ['/C', $command]);
         } else {
@@ -363,7 +363,7 @@ class Process
     public static function changeUser($user)
     {
         if (!function_exists('posix_getpwnam')) {
-            log_error(__METHOD__ . ": require posix extension.");
+            logError(__METHOD__ . ": require posix extension.");
             return false;
         }
         $user = posix_getpwnam($user);

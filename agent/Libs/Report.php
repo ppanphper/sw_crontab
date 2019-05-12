@@ -48,7 +48,7 @@ class Report
         // 初始化日志队列内存表
         self::$_logChannel = new LogChannel(1024 * 1024 * 100);
 
-        $config = config_item('report_monitor');
+        $config = configItem('report_monitor');
 
         if (!empty($config['host'])) {
             self::$_host = $config['host'];
@@ -210,7 +210,7 @@ class Report
         $noticeWayMaps = Constants::NOTICE_WAY_MAPS;
         $noticeWay = intval($noticeWay);
         if (!isset($noticeWayMaps[$noticeWay])) {
-            log_warning(__METHOD__ . ' 通知方式未知: taskId = ' . $taskId . '; noticeWay = ' . var_export($noticeWay, true) . '; content = ' . var_export($content, true));
+            logWarning(__METHOD__ . ' 通知方式未知: taskId = ' . $taskId . '; noticeWay = ' . var_export($noticeWay, true) . '; content = ' . var_export($content, true));
             return $boolean;
         }
         // 有负责人
@@ -225,19 +225,19 @@ class Report
                         'b.status' => 1,
                     ])->fetchAll();
             } catch (\Exception $e) {
-                log_error(__METHOD__ . ' 查用户信息失败: taskId = ' . $taskId . '; errorMsg = ' . $e->getMessage());
+                logError(__METHOD__ . ' 查用户信息失败: taskId = ' . $taskId . '; errorMsg = ' . $e->getMessage());
             }
         }
         // 没有查到负责人信息
         if (empty($userData)) {
-            log_warning(__METHOD__ . ' 查不到用户信息: taskId = ' . $taskId . '; 通知系统管理人员');
-            $userData = config_item('system_manage_notice_address');
+            logWarning(__METHOD__ . ' 查不到用户信息: taskId = ' . $taskId . '; 通知系统管理人员');
+            $userData = configItem('system_manage_notice_address');
         }
         $to = $cc = [];
 
         // 发送邮件
         if ($noticeWay & Constants::NOTICE_WAY_SEND_MAIL) {
-            $cc = config_item('system_manage_email_address');
+            $cc = configItem('system_manage_email_address');
         }
 
         foreach ($userData as $user) {
@@ -262,7 +262,7 @@ class Report
         }
 
         if ($to) {
-            $boolean = sendMail(config_item('system_name', 'SWC系统') . '告警', $content, $to, $cc);
+            $boolean = sendMail(configItem('system_name', 'SWC系统') . '告警', $content, $to, $cc);
         }
         return $boolean;
     }
@@ -272,7 +272,7 @@ class Report
      */
     private static function consumeQueue()
     {
-        $dateFormat = config_item('default_date_format', 'Y-m-d H:i:s');
+        $dateFormat = configItem('default_date_format', 'Y-m-d H:i:s');
         $stats = self::$_logChannel->stats();
         $loadTasksTable = LoadTasks::getTable();
         if ($stats['queue_num'] > 0) {
@@ -301,7 +301,7 @@ class Report
                     if (!$boolean) {
                         // 根据返回结果
                         $content = '通知[失败] 内容: ' . $content;
-                        log_warning($content);
+                        logWarning($content);
                     }
                 }
             }

@@ -72,7 +72,7 @@ class Log
      */
     public static function init()
     {
-        $config = config_item('log');
+        $config = configItem('log');
 
         $defaultLogPath = ROOT_PATH . 'Logs' . DIRECTORY_SEPARATOR;
 
@@ -139,7 +139,7 @@ class Log
     /**
      * Write Log File
      *
-     * Generally this function will be called using the global log_message() function
+     * Generally this function will be called using the global logMessage() function
      *
      * @param    string $level the error level
      * @param    string $msg the error message
@@ -147,7 +147,7 @@ class Log
      *
      * @return    bool
      */
-    public static function write_log($level = 'error', $msg, $exceptionObject = null)
+    public static function writeLog($level = 'error', $msg, $exceptionObject = null)
     {
         if (self::$_enabled == FALSE) {
             return true;

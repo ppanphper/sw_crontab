@@ -100,7 +100,7 @@ abstract class ServerBase
      */
     public function __construct($host = "0.0.0.0", $port = 0, $ssl = false)
     {
-        $swooleVersion = config_item('swoole_version');
+        $swooleVersion = configItem('swoole_version');
         if (version_compare(SWOOLE_VERSION, $swooleVersion, '<')) {
             die('请安装Swoole ' . $swooleVersion . ' 以上的版本!');
         }
@@ -123,7 +123,7 @@ abstract class ServerBase
         !defined('SERVER_INTERNAL_IP') && define('SERVER_INTERNAL_IP', getServerInternalIp());
         !defined('SERVER_PORT') && define('SERVER_PORT', $this->port);
 
-        $this->dateFormat = config_item('default_date_format', 'Y-m-d H:i:s');
+        $this->dateFormat = configItem('default_date_format', 'Y-m-d H:i:s');
 
         $this->_config = [
             'dispatch_mode'            => 3,
@@ -273,14 +273,25 @@ abstract class ServerBase
      *
      * @param $name
      * @param string $separator
+     * @param SwooleProcess $process
      */
-    public function setProcessName($name, $separator = '|')
+    public function setProcessName($name, $separator = '|', $process = null)
     {
-        if (stristr(PHP_OS, 'DAR')) {
+        if (is_null($separator)) {
+            $separator = '|';
+        }
+
+        // Mac不支持设置进程名称
+        if (isMacOS()) {
             return;
         }
 
         $processNewName = $this->_serverName . $separator . $name;
+        if ($process instanceof SwooleProcess) {
+            $process->name($processNewName);
+            return;
+        }
+
         if (function_exists('cli_set_process_title')) {
             cli_set_process_title($processNewName);
         } else {
@@ -406,7 +417,7 @@ abstract class ServerBase
          */
         Log::init();
         $this->sw->addProcess(new SwooleProcess(function ($process) {
-            if (!stristr(PHP_OS, 'DAR')) {
+            if (!isMacOS()) {
                 $process->name($this->_serverName . '|LogFlushToDisk');
             }
             return Log::flush();
@@ -586,6 +597,6 @@ abstract class ServerBase
             return;
         }
         $msg = $message . ' at ' . $filePath . '[' . $line . ']';
-        log_message($this->_levels[$severity], $msg);
+        logMessage($this->_levels[$severity], $msg);
     }
 }

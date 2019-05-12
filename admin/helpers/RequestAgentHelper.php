@@ -8,7 +8,7 @@
 
 namespace app\helpers;
 use app\helpers\PacketHelper as Packet;
-use function Libs\log_warning;
+use function Libs\logWarning;
 use \Swoole\Client as SwooleClient;
 use app\config\Constants;
 
@@ -53,7 +53,7 @@ class RequestAgentHelper
             } else {
                 $msg = 'connect fail, '. socket_strerror($errorCode) . '; address = ' . $ip . ':' . $port;
             }
-            log_warning(__METHOD__ . ' '.$msg);
+            logWarning(__METHOD__ . ' '.$msg);
             return Packet::packFormat($msg, $errorCode);
         }
         if(!is_string($sendData)) {

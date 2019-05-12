@@ -48,7 +48,7 @@ class DbLog
         // 初始化日志队列内存表
         self::$_logChannel = new LogChannel();
         // 写入db日志最大重试次数
-        self::$_retryMaxNum = config_item('flush_db_log_max_retry_num', 3);
+        self::$_retryMaxNum = configItem('flush_db_log_max_retry_num', 3);
 
         /** 用来存储日志内容 */
         self::$table = new SwooleTable(TASK_MAX_LOAD_SIZE);
@@ -142,7 +142,7 @@ class DbLog
         try {
             $db = getDBInstance();
             $stats = self::$_logChannel->stats();
-            $dateFormat = config_item('default_date_format');
+            $dateFormat = configItem('default_date_format');
             if ($stats['queue_num'] > 0) {
                 for ($i = 0; $i < $stats['queue_num']; $i++) {
                     $originLog = self::$_logChannel->pop();
@@ -190,7 +190,7 @@ class DbLog
                             } else {
                                 // 入库失败重试次数达到阀值就删除掉
                                 self::$table->del($key);
-                                log_warning($logPrefix . json_encode($originLog, JSON_UNESCAPED_UNICODE));
+                                logWarning($logPrefix . json_encode($originLog, JSON_UNESCAPED_UNICODE));
                             }
                         } else {
                             // 入库后就删除掉
@@ -200,7 +200,7 @@ class DbLog
                 }
             }
         } catch (\Exception $e) {
-            log_error($logPrefix . $e->getMessage());
+            logError($logPrefix . $e->getMessage());
         }
     }
 

@@ -18,36 +18,36 @@ if (version_compare(PHP_VERSION, '5.6.0') < 0) throw new Exception('PHP Version 
  * @param $message
  * @param null $exceptionObject
  */
-function log_message($level = 'Info', $message, $exceptionObject = null)
+function logMessage($level = 'Info', $message, $exceptionObject = null)
 {
-    Log::write_log($level, $message, $exceptionObject);
+    Log::writeLog($level, $message, $exceptionObject);
 }
 
 /**
  * @param $message
  * @param null $exceptionObject
  */
-function log_error($message, $exceptionObject = null)
+function logError($message, $exceptionObject = null)
 {
-    log_message('Error', $message, $exceptionObject);
+    logMessage('Error', $message, $exceptionObject);
 }
 
 /**
  * @param $message
  * @param null $exceptionObject
  */
-function log_warning($message, $exceptionObject = null)
+function logWarning($message, $exceptionObject = null)
 {
-    log_message('Warning', $message, $exceptionObject);
+    logMessage('Warning', $message, $exceptionObject);
 }
 
 /**
  * @param $message
  * @param null $exceptionObject
  */
-function log_info($message, $exceptionObject = null)
+function logInfo($message, $exceptionObject = null)
 {
-    log_message('Info', $message, $exceptionObject);
+    logMessage('Info', $message, $exceptionObject);
 }
 
 /**
@@ -59,7 +59,7 @@ function log_info($message, $exceptionObject = null)
  *
  * @return mixed|null
  */
-function config_item($item = null, $default = null, $fileName = 'config')
+function configItem($item = null, $default = null, $fileName = 'config')
 {
     static $_config = [];
     if (!isset($_config[$fileName])) {
@@ -96,7 +96,7 @@ function config_item($item = null, $default = null, $fileName = 'config')
  *
  * @return string
  */
-function get_arg(&$arg, $level = 0)
+function getArg(&$arg, $level = 0)
 {
     // 最大层数
     if ($level >= TRACE_LEVEL) {
@@ -110,7 +110,7 @@ function get_arg(&$arg, $level = 0)
                 $key = '';    // Private variable found
             }
             $level++;
-            $args[] = '[' . $key . '] => ' . get_arg($value, $level);
+            $args[] = '[' . $key . '] => ' . getArg($value, $level);
         }
 
         $arg = get_class($arg) . ' Object (' . implode(',', $args) . ')';
@@ -154,7 +154,7 @@ function convenienceDebug($traces, $traces_to_ignore = 0, $split = PHP_EOL, $exc
             // 是否显示堆栈明细
             if (DEBUG_TRACE_DETAIL && is_array($trace['args'])) {
                 foreach ($trace['args'] as &$arg) {
-                    get_arg($arg);
+                    getArg($arg);
                 }
             }
         }
@@ -195,40 +195,44 @@ function getBacktrace($split = PHP_EOL, $exceptionObject = null)
     return convenienceDebug($arr, 0, $split, $exceptionObject);
 }
 
-if (!function_exists('createDir')) {
-    /**
-     * 创建目录
-     *
-     * @param string $path
-     * @param int $mode
-     *
-     * @return bool
-     */
-    function createDir($path, $mode = 0744)
-    {
-        return is_dir($path) || (createDir(dirname($path), $mode) && mkdir($path, $mode));
-    }
+/**
+ * 创建目录
+ *
+ * @param string $path
+ * @param int $mode
+ *
+ * @return bool
+ */
+function createDir($path, $mode = 0744)
+{
+    return is_dir($path) || (createDir(dirname($path), $mode) && mkdir($path, $mode));
 }
 
-if (!function_exists('isLinuxOS')) {
-    /**
-     * 是否是Linux系统
-     * @return bool
-     */
-    function isLinuxOS()
-    {
-        return stristr(PHP_OS, 'Linux') ? true : false;
-    }
+/**
+ * 是否是Linux系统
+ * @return bool
+ */
+function isLinuxOS()
+{
+    return stristr(PHP_OS, 'Linux') ? true : false;
 }
-if (!function_exists('isWindowsOS')) {
-    /**
-     * 是否是windows系统
-     * @return bool
-     */
-    function isWindowsOS()
-    {
-        return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
-    }
+
+/**
+ * 是否是windows系统
+ * @return bool
+ */
+function isWindowsOS()
+{
+    return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+}
+
+/**
+ * 是否是MacOS
+ * @return bool
+ */
+function isMacOS()
+{
+    return stristr(PHP_OS, 'DAR') ? true : false;
 }
 
 /**
@@ -266,7 +270,7 @@ function getServerInternalIp()
                 // 由于文件没有可执行权限，所以无法获取
                 $ip = exec("/sbin/ifconfig|grep -oP '(?<=inet addr:)[^ ]+'|grep -E '^" . $pattern . "'|head -1");
             } // OSX
-            else if (stristr(PHP_OS, 'DAR')) {
+            else if (isMacOS()) {
                 $ip = exec("/sbin/ifconfig|grep -Eo 'inet (" . $pattern . ")[^ ]+|grep -Eo '(" . $pattern . ")[^ ]+'|head -1");
             } // WINDOWS
             else if (stristr(PHP_OS, 'WIN')) {
@@ -283,7 +287,7 @@ function getServerInternalIp()
             }
         }
     } catch (Exception $e) {
-        log_message('Warning', '获取服务器内网IP失败: ' . $e->getMessage());
+        logMessage('Warning', '获取服务器内网IP失败: ' . $e->getMessage());
     }
     if (!$ip) {
         // 获取不到内网IP
@@ -326,12 +330,12 @@ function getDBInstance($name = '')
 {
     static $_dbs = [];
     // 默认数据库
-    empty($name) && $name = config_item('default_select_db');
+    empty($name) && $name = configItem('default_select_db');
     $name = strtolower($name);
     if (isset($_dbs[$name])) {
         return $_dbs[$name];
     }
-    $dbConfig = config_item(null, null, 'db');
+    $dbConfig = configItem(null, null, 'db');
     $config = isset($dbConfig[$name]) ? $dbConfig[$name] : [];
     if (empty($config) || empty($config['dsn']) || empty($config['username'])) {
         throw new Exception('请先配置[' . $name . ']数据库连接参数');
@@ -343,42 +347,40 @@ function getDBInstance($name = '')
     return $_dbs[$name];
 }
 
-if (!function_exists('getConcurrentLock')) {
-    /**
-     * 获取、释放分布式锁
-     *
-     * @param $redisKeySuffix
-     * @param int $type 1=lock 0=unlock
-     * @param int $expireTime
-     *
-     * @return mixed
-     * @throws Exception
-     */
-    function getConcurrentLock($redisKeySuffix, $type = 1, $expireTime = 300)
-    {
-        static $serverInternalIp = null;
-        if ($serverInternalIp === null) {
-            $serverInternalIp = getServerInternalIp(); // 获取服务器内部IP地址
-        }
-        if (!is_string($redisKeySuffix)) {
-            throw new Exception('key必须是字符串类型');
-        }
+/**
+ * 获取、释放分布式锁
+ *
+ * @param $redisKeySuffix
+ * @param int $type 1=lock 0=unlock
+ * @param int $expireTime
+ *
+ * @return mixed
+ * @throws Exception
+ */
+function getConcurrentLock($redisKeySuffix, $type = 1, $expireTime = 300)
+{
+    static $serverInternalIp = null;
+    if ($serverInternalIp === null) {
+        $serverInternalIp = getServerInternalIp(); // 获取服务器内部IP地址
+    }
+    if (!is_string($redisKeySuffix)) {
+        throw new Exception('key必须是字符串类型');
+    }
 
-        if (strlen($redisKeySuffix) != 32) {
-            $redisKeySuffix = md5($redisKeySuffix);
-        }
+    if (strlen($redisKeySuffix) != 32) {
+        $redisKeySuffix = md5($redisKeySuffix);
+    }
 
-        $redisObject = RedisClient::getInstance();
-        $redisKey = Constants::REDIS_CONCURRENT_FLAG_PREFIX . $redisKeySuffix;
-        // 尝试加锁
-        if ($type == 1) {
-            /** 假如连不上Redis，那么所有机器都不运行这个脚本 */
-            // 成功返回1，失败返回0; 锁定这个交易所，本次在这台机器上运行
-            return $redisObject->set($redisKey, $serverInternalIp, ['NX', 'EX' => $expireTime]);
-        } // 释放锁
-        else {
-            return $redisObject->del($redisKey);
-        }
+    $redisObject = RedisClient::getInstance();
+    $redisKey = Constants::REDIS_CONCURRENT_FLAG_PREFIX . $redisKeySuffix;
+    // 尝试加锁
+    if ($type == 1) {
+        /** 假如连不上Redis，那么所有机器都不运行这个脚本 */
+        // 成功返回1，失败返回0; 锁定这个交易所，本次在这台机器上运行
+        return $redisObject->set($redisKey, $serverInternalIp, ['NX', 'EX' => $expireTime]);
+    } // 释放锁
+    else {
+        return $redisObject->del($redisKey);
     }
 }
 
@@ -402,7 +404,7 @@ function sendMail($title, $content, $to, $cc = '', $file = [], $retry = 3)
     if (!$to || !$content) return $boolean;
 
     if (empty($config)) {
-        $config = config_item(null, null, 'email');
+        $config = configItem(null, null, 'email');
     }
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
 
@@ -470,7 +472,7 @@ function sendMail($title, $content, $to, $cc = '', $file = [], $retry = 3)
             $retry--;
         } while ($boolean == false && $retry >= 0);
     } catch (Exception $e) {
-        log_warning('发送邮件失败: ' . $e->getMessage() . '; title = ' . $title . '; to = ' . var_export($to, true) . '; cc = ' . var_export($cc, true));
+        logWarning('发送邮件失败: ' . $e->getMessage() . '; title = ' . $title . '; to = ' . var_export($to, true) . '; cc = ' . var_export($cc, true));
     }
     return $boolean;
 }

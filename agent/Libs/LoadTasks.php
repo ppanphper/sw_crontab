@@ -191,7 +191,7 @@ class LoadTasks
                     try {
                         self::load($ids);
                     } catch (\Exception $e) {
-                        log_warning(__METHOD__ . ' Error = ' . $e->getMessage());
+                        logWarning(__METHOD__ . ' Error = ' . $e->getMessage());
                     }
                 }
                 // 删除过期域记录
@@ -202,7 +202,7 @@ class LoadTasks
                 }
             }
         } catch (\Exception $e) {
-            log_warning(__METHOD__ . ' Error = ' . $e->getMessage());
+            logWarning(__METHOD__ . ' Error = ' . $e->getMessage());
         }
     }
 
@@ -250,7 +250,7 @@ class LoadTasks
                     }
                 }
             } catch (\Exception $e) {
-                log_error(__METHOD__ . ' Error: ' . $e->getMessage());
+                logError(__METHOD__ . ' Error: ' . $e->getMessage());
             }
         }
         return self::$agentInfo;
