@@ -2,6 +2,7 @@
 
 namespace app\helpers;
 
+use Yii;
 use app\config\Constants;
 
 class PacketHelper
@@ -57,14 +58,14 @@ class PacketHelper
         }
         if ($len != strlen($result)) {
             //结果长度不对
-            log_message('warning', 'packDecode解包时, 结果长度错误');
+            Yii::warning('packDecode解包时, 结果长度错误');
 
             return self::packFormat("packet length invalid 包长度非法", Constants::STATUS_CODE_RECEIVE_PACKET_LENGTH_WRONG);
         }
         $originalValue = $result;
         $result = unserialize($result);
         if ($result === false) {
-            log_message('Warning', ' 反序列化失败 = ' . var_export($originalValue, true));
+            Yii::warning(' 反序列化失败 = ' . var_export($originalValue, true));
         }
         return self::packFormat("OK", Constants::STATUS_CODE_SUCCESS, $result);
     }

@@ -452,7 +452,13 @@ foreach($noticeWayMaps as &$val) {
 
                     <?= $form->field($model, 'rule')->textarea(['rows' => '6', 'maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the crontab rule')]) ?>
 
-                    <?= $form->field($model, 'command')->textarea(['rows' => '6', 'maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the command to execute, must use absolute path.')])->hint('eg: /usr/bin/php /data/path/cli.php crontab test "params"<br />no support: > | >> /path/to/log 2>&1') ?>
+                    <?= $form->field($model, 'command')
+                        ->textarea(['rows' => '6', 'maxlength' => true, 'placeholder' => Yii::t('app', 'Please enter the command to execute, must use absolute path.')])
+                        ->hint(
+                                '<div>eg: /usr/bin/php /data/path/cli.php crontab test "params" > /path/to/log 2>&1</div>'.
+                                '<div>eg: /usr/bin/php /data/path/cli.php crontab test "params" > /path/to/log_$(date +\%Y\%m\%d) 2>&1</div>'
+                        );
+                    ?>
 
                     <?= $form->field($model, 'concurrency')->textInput(['placeholder'=>Yii::t('app', 'Please enter the concurrency number')])->hint(Yii::t('app', 'Zero means no restriction')) ?>
 
@@ -482,7 +488,7 @@ foreach($noticeWayMaps as &$val) {
 
                     <?= $form->field($model, 'retry_interval')->textInput(['placeholder'=>Yii::t('app', 'Please enter the retry interval')])->hint(Yii::t('app', 'Zero means immediate retry').', '.Yii::t('app', 'The unit is seconds')) ?>
 
-                    <?= $form->field($model, 'run_user')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please input what user to run the command?')])->hint(Yii::t('app', 'Default: root. Please note that other users may not have log permissions.')) ?>
+                    <?= $form->field($model, 'run_user')->dropDownList(Yii::$app->params['runUserItems'])->hint(Yii::t('app', 'Note: Please confirm whether user have write log permissions.')) ?>
 
                     <?= $form->field($model, 'ownerId')->widget(SelectizeDropDownList::class, [
                         'items' => User::getDropDownListData(),
@@ -532,8 +538,8 @@ foreach($noticeWayMaps as &$val) {
                     ?>
 
                     <?= $form->field($model, 'status')->dropDownList([
-                        Crontab::STATUS_ENABLED=>Yii::t('app','Enabled'),
-                        Crontab::STATUS_DISABLED=>Yii::t('app','Disabled'),
+                        Crontab::STATUS_ENABLED => Yii::t('app','Enabled'),
+                        Crontab::STATUS_DISABLED => Yii::t('app','Disabled'),
                     ])?>
                 </div>
 

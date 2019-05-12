@@ -8,6 +8,7 @@ use yii\base\DynamicModel;
 use yii\db\ActiveRecord;
 use \Exception;
 use \Throwable;
+
 /**
  * This is the model class for table "crontab".
  *
@@ -64,31 +65,35 @@ class Crontab extends ActiveRecord
             ['notice_way', 'default', 'value' => Constants::NOTICE_WAY_SEND_MAIL],
 
             // 创建任务时，自动填充创建时间
-            [['create_time', 'update_time'], 'filter', 'filter'=>function($value){return time();}, 'on'=>['create']],
+            [['create_time', 'update_time'], 'filter', 'filter' => function ($value) {
+                return time();
+            }, 'on'                                             => ['create']],
             // 更新任务时，自动填充更新时间
-            ['update_time', 'filter', 'filter'=>function($value){return time();}, 'on'=>['update']],
+            ['update_time', 'filter', 'filter' => function ($value) {
+                return time();
+            }, 'on'                            => ['update']],
             // 判断最大长度
             ['name', 'string', 'max' => 64],
             ['command', 'string', 'max' => 512],
             ['desc', 'string', 'max' => 255],
-            ['command', function($attr) {
+            ['command', function ($attr) {
                 $value = $this->{$attr};
                 // 如果有单、双引号，就判断单、双引号是否成对出现
-                if(preg_match('/[\'"]/', $value)) {
-                    $doubleQuoteCount = substr_count($value,'"');
-                    $singleQuoteCount = substr_count($value,"'");
+                if (preg_match('/[\'"]/', $value)) {
+                    $doubleQuoteCount = substr_count($value, '"');
+                    $singleQuoteCount = substr_count($value, "'");
                     // 如果是奇数，就返回false
                     $boolean = (($doubleQuoteCount & 1) || ($singleQuoteCount & 1));
-                    if($boolean) {
+                    if ($boolean) {
                         $this->addError($attr, Yii::t('app', 'Quotes must appear in pairs'));
                     }
                 }
                 return true;
             }],
-            ['command', 'match', 'pattern' => Constants::CMD_PARSE_PATTERN, 'message'=> Yii::t('app', 'CMD parse failed')],
+            ['command', 'match', 'pattern' => Constants::CMD_PARSE_PATTERN, 'message' => Yii::t('app', 'CMD parse failed')],
 
             [['rule', 'run_user'], 'string', 'max' => 600],
-            ['rule', function($attr) {
+            ['rule', function ($attr) {
                 $value = $this->{$attr};
                 if (!preg_match(Constants::CRON_RULE_PATTERN, trim($value))) {
                     $this->addError($attr, Yii::t('app', 'Invalid cron rule'));
@@ -101,17 +106,17 @@ class Crontab extends ActiveRecord
             ['retries', 'number', 'min' => 0, 'max' => 255],
 
             // 不允许使用root运行任务
-//			['run_user', 'compare', 'compareValue'=>'root', 'operator'=>'!='],
+//            ['run_user', 'compare', 'compareValue' => 'root', 'operator' => '!='],
             // 遍历每个参数判断是否是整数型
-//			[['owner', 'agents', 'notin_agents'], 'each', 'rule' => ['integer']],
+//            [['owner', 'agents', 'notin_agents'], 'each', 'rule' => ['integer']],
             // 把字段的值转成字符串型
-//			[
-//				['owner', 'agents', 'notin_agents'], 'filter', 'filter' => function($value) {
-//					return is_array($value) ? implode(',', $value) : $value;
-//				}
-//			],
+//            [
+//                ['owner', 'agents', 'notin_agents'], 'filter', 'filter' => function ($value) {
+//                return is_array($value) ? implode(',', $value) : $value;
+//            }
+//            ],
             // 判断是否超出最大长度
-//			[['owner', 'agents', 'notin_agents'], 'string', 'max' => 255, 'on'=>['create', 'update']],
+//            [['owner', 'agents', 'notin_agents'], 'string', 'max' => 255, 'on' => ['create', 'update']],
         ];
     }
 
@@ -121,29 +126,28 @@ class Crontab extends ActiveRecord
     public function attributeLabels()
     {
         return [
-            'id' => Yii::t('app', 'ID'),
-            'cid' => Yii::t('app', 'Category Name'),
-            'name' => Yii::t('app', 'Name'),
-            'desc' => Yii::t('app', 'Desc'),
-            'rule' => Yii::t('app', 'Rule'),
-            'concurrency' => Yii::t('app', 'Concurrency'),
+            'id'               => Yii::t('app', 'ID'),
+            'cid'              => Yii::t('app', 'Category Name'),
+            'name'             => Yii::t('app', 'Name'),
+            'desc'             => Yii::t('app', 'Desc'),
+            'rule'             => Yii::t('app', 'Rule'),
+            'concurrency'      => Yii::t('app', 'Concurrency'),
             'max_process_time' => Yii::t('app', 'Max Process Time'),
-            'timeout_opt' => Yii::t('app', 'Time out option'),
-            'log_opt' => Yii::t('app', 'Log out option'),
-            'retries' => Yii::t('app', 'Retries'),
-            'retry_interval' => Yii::t('app', 'Retry interval'),
-            'command' => Yii::t('app', 'Command'),
-            'status' => Yii::t('app', 'Status'),
-            'run_user' => Yii::t('app', 'Run User'),
-//			'owner' => Yii::t('app', 'Owner'),
-//			'agents' => Yii::t('app', 'Agents'),
-//			'notin_agents' => Yii::t('app', 'Not in agents'),
-            'notice_way' => Yii::t('app', 'Notice Way'),
-            'create_time' => Yii::t('app', 'Create Time'),
-            'update_time' => Yii::t('app', 'Update Time'),
-
-            'ownerId' => Yii::t('app', 'Owner'),
-            'agentId' => Yii::t('app', 'Agents'),
+            'timeout_opt'      => Yii::t('app', 'Time out option'),
+            'log_opt'          => Yii::t('app', 'Log out option'),
+            'retries'          => Yii::t('app', 'Retries'),
+            'retry_interval'   => Yii::t('app', 'Retry interval'),
+            'command'          => Yii::t('app', 'Command'),
+            'status'           => Yii::t('app', 'Status'),
+            'run_user'         => Yii::t('app', 'Run User'),
+//            'owner'            => Yii::t('app', 'Owner'),
+//            'agents'           => Yii::t('app', 'Agents'),
+//            'notin_agents'     => Yii::t('app', 'Not in agents'),
+            'notice_way'       => Yii::t('app', 'Notice Way'),
+            'create_time'      => Yii::t('app', 'Create Time'),
+            'update_time'      => Yii::t('app', 'Update Time'),
+            'ownerId'      => Yii::t('app', 'Owner'),
+            'agentId'      => Yii::t('app', 'Agents'),
             'notInAgentId' => Yii::t('app', 'Not running on these nodes'),
         ];
     }
@@ -156,16 +160,16 @@ class Crontab extends ActiveRecord
      * @return bool
      * @throws \yii\db\Exception
      */
-    public function saveData($params) {
-        if($this->load($params))
-        {
+    public function saveData($params)
+    {
+        if ($this->load($params)) {
             $transaction = self::getDb()->beginTransaction();
             try {
-                if($this->save()) {
-                    if(!empty($this->id)) {
-                        ViaTable::deleteAll(['aid'=>$this->id, 'type' => ViaTable::TYPE_CRONTAB_AGENTS]);
-                        ViaTable::deleteAll(['aid'=>$this->id, 'type' => ViaTable::TYPE_CRONTAB_OWNER]);
-                        ViaTable::deleteAll(['aid'=>$this->id, 'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS]);
+                if ($this->save()) {
+                    if (!empty($this->id)) {
+                        ViaTable::deleteAll(['aid' => $this->id, 'type' => ViaTable::TYPE_CRONTAB_AGENTS]);
+                        ViaTable::deleteAll(['aid' => $this->id, 'type' => ViaTable::TYPE_CRONTAB_OWNER]);
+                        ViaTable::deleteAll(['aid' => $this->id, 'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS]);
                     }
 
                     $ownerId = $agentId = $notInAgentId = [];
@@ -191,75 +195,71 @@ class Crontab extends ActiveRecord
                         // 验证失败
                         throw new Exception(Yii::t('app', 'Failed validation form'));
                     }
-                    if(!empty($ownerId)) {
-                        if(is_array($ownerId)) {
+                    if (!empty($ownerId)) {
+                        if (is_array($ownerId)) {
                             $records = [];
-                            foreach($ownerId as $id) {
-                                if($id) {
+                            foreach ($ownerId as $id) {
+                                if ($id) {
                                     $records[$id] = [
-                                        'aid' => $this->id,
-                                        'bid' => $id,
+                                        'aid'  => $this->id,
+                                        'bid'  => $id,
                                         'type' => ViaTable::TYPE_CRONTAB_OWNER
                                     ];
                                 }
                             }
                             $data = array_merge($data, array_values($records));
-                        }
-                        else {
+                        } else {
                             $data[] = [
-                                'aid' => $this->id,
-                                'bid' => $ownerId,
+                                'aid'  => $this->id,
+                                'bid'  => $ownerId,
                                 'type' => ViaTable::TYPE_CRONTAB_OWNER
                             ];
                         }
                     }
-                    if(!empty($agentId)) {
-                        if(is_array($agentId)) {
+                    if (!empty($agentId)) {
+                        if (is_array($agentId)) {
                             $records = [];
-                            foreach($agentId as $id) {
-                                if($id) {
+                            foreach ($agentId as $id) {
+                                if ($id) {
                                     $records[$id] = [
-                                        'aid' => $this->id,
-                                        'bid' => $id,
+                                        'aid'  => $this->id,
+                                        'bid'  => $id,
                                         'type' => ViaTable::TYPE_CRONTAB_AGENTS
                                     ];
                                 }
                             }
                             $data = array_merge($data, array_values($records));
-                        }
-                        else {
+                        } else {
                             $data[] = [
-                                'aid' => $this->id,
-                                'bid' => $agentId,
+                                'aid'  => $this->id,
+                                'bid'  => $agentId,
                                 'type' => ViaTable::TYPE_CRONTAB_AGENTS
                             ];
                         }
                     }
-                    if(!empty($notInAgentId)) {
-                        if(is_array($notInAgentId)) {
+                    if (!empty($notInAgentId)) {
+                        if (is_array($notInAgentId)) {
                             $records = [];
-                            foreach($notInAgentId as $id) {
-                                if($id) {
+                            foreach ($notInAgentId as $id) {
+                                if ($id) {
                                     $records[$id] = [
-                                        'aid' => $this->id,
-                                        'bid' => $id,
+                                        'aid'  => $this->id,
+                                        'bid'  => $id,
                                         'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS
                                     ];
                                 }
                             }
                             $data = array_merge($data, array_values($records));
-                        }
-                        else {
+                        } else {
                             $data[] = [
-                                'aid' => $this->id,
-                                'bid' => $notInAgentId,
+                                'aid'  => $this->id,
+                                'bid'  => $notInAgentId,
                                 'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS
                             ];
                         }
                     }
-                    if($data) {
-                        for ($i = 0, $total = count($data); $i < $total; $i += 100)
-                        {
+                    if ($data) {
+                        for ($i = 0, $total = count($data); $i < $total; $i += 100) {
                             self::getDb()->createCommand()->batchInsert(ViaTable::tableName(), ['aid', 'bid', 'type'], array_slice($data, $i, 100))->execute();
                         }
                     }
@@ -268,10 +268,10 @@ class Crontab extends ActiveRecord
                 }
             } catch (Exception $e) {
                 $transaction->rollBack();
-                Yii::warning(__METHOD__ .' Save data failed = '.$e->getMessage());
-            } catch(Throwable $e) {
+                Yii::warning(__METHOD__ . ' Save data failed = ' . $e->getMessage());
+            } catch (Throwable $e) {
                 $transaction->rollBack();
-                Yii::warning(__METHOD__ .' Save data failed = '.$e->getMessage());
+                Yii::warning(__METHOD__ . ' Save data failed = ' . $e->getMessage());
             }
         }
         return false;
@@ -279,40 +279,22 @@ class Crontab extends ActiveRecord
 
     public function getCategory()
     {
-        return $this->hasOne(Category::class, ['id'=>'cid']);
+        return $this->hasOne(Category::class, ['id' => 'cid']);
     }
 
     public function getAgents()
     {
-        return $this->hasMany(ViaTable::class, ['aid'=>'id'])->onCondition(['b.type' => ViaTable::TYPE_CRONTAB_AGENTS])->alias('b');
-        // hasMany要求返回两个参数 第一个参数是关联表的类名 第二个参数是两张表的关联关系
-        // aid是ViaTable表关联Crontab表的关联字段, id是Crontab表的主键
-        // bid是ViaTable表关联Agents表的关联字段, id是Agents表的主键
-        // type = ViaTable::TYPE_CRONTAB_AGENTS 表示查询crontab和agents表的关联记录
-//		$viaTableName = ViaTable::tableName() . ' b';
-//		return $this->hasMany(Agents::class, ['id'=>'bid'])->alias('c')
-//			->viaTable($viaTableName,['aid'=>'id'], function ($query) {
-//				$query->onCondition(['b.type' => ViaTable::TYPE_CRONTAB_AGENTS]);
-//			});
+        return $this->hasMany(ViaTable::class, ['aid' => 'id'])->onCondition(['b.type' => ViaTable::TYPE_CRONTAB_AGENTS])->alias('b');
     }
 
     public function getOwners()
     {
-        return $this->hasMany(ViaTable::class, ['aid'=>'id'])->onCondition(['c.type' => ViaTable::TYPE_CRONTAB_OWNER])->alias('c');
-        // hasMany要求返回两个参数 第一个参数是关联表的类名 第二个参数是两张表的关联关系
-        // aid是ViaTable表关联Crontab表的关联字段, id是Crontab表的主键
-        // bid是ViaTable表关联User表的关联字段, id是User表的主键
-        // type = ViaTable::TYPE_CRONTAB_OWNER 表示查询crontab和User表的关联记录
-//		$viaTableName = ViaTable::tableName() .' d';
-//		return $this->hasMany(User::class, ['id'=>'bid'])->alias('e')
-//			->viaTable($viaTableName,['aid'=>'id'], function ($query) {
-//				$query->onCondition(['d.type' => ViaTable::TYPE_CRONTAB_OWNER]);
-//			});
+        return $this->hasMany(ViaTable::class, ['aid' => 'id'])->onCondition(['c.type' => ViaTable::TYPE_CRONTAB_OWNER])->alias('c');
     }
 
     public function getNotInAgents()
     {
-        return $this->hasMany(ViaTable::class, ['aid'=>'id'])->onCondition(['d.type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS])->alias('d');
+        return $this->hasMany(ViaTable::class, ['aid' => 'id'])->onCondition(['d.type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS])->alias('d');
     }
 
     /**
@@ -321,16 +303,15 @@ class Crontab extends ActiveRecord
      *
      * @return array
      */
-    public function getOwnerId() {
+    public function getOwnerId()
+    {
         $data = [];
-        if($this->owners) {
-            foreach($this->owners as $item) {
-//				$data[] = $item['id'];
+        if ($this->owners) {
+            foreach ($this->owners as $item) {
                 $data[] = $item['bid'];
             }
-        }
-        // 新增页面负责人默认值
-        else if($this->getScenario() === self::SCENARIO_DEFAULT) {
+        } // 新增页面负责人默认值
+        else if ($this->getScenario() === self::SCENARIO_DEFAULT) {
             $data[] = Yii::$app->user->getIdentity()->getId();
         }
         return $data;
@@ -342,11 +323,11 @@ class Crontab extends ActiveRecord
      *
      * @return array
      */
-    public function getAgentId() {
+    public function getAgentId()
+    {
         $data = [];
-        if($this->agents) {
-            foreach($this->agents as $item) {
-//				$data[] = $item['id'];
+        if ($this->agents) {
+            foreach ($this->agents as $item) {
                 $data[] = $item['bid'];
             }
         }
@@ -359,11 +340,11 @@ class Crontab extends ActiveRecord
      *
      * @return array
      */
-    public function getNotInAgentId() {
+    public function getNotInAgentId()
+    {
         $data = [];
-        if($this->notInAgents) {
-            foreach($this->notInAgents as $item) {
-//				$data[] = $item['id'];
+        if ($this->notInAgents) {
+            foreach ($this->notInAgents as $item) {
                 $data[] = $item['bid'];
             }
         }
@@ -382,7 +363,7 @@ class Crontab extends ActiveRecord
         parent::afterSave($insert, $changedAttributes);
 
         // 标识有更新，客户端扫描到有更新
-        Yii::$app->redis->set(Constants::REDIS_KEY_CRONTAB_CHANGE_MD5, md5(microtime(true)), 86400);
+        Yii::$app->redis->set(Constants::REDIS_KEY_CRONTAB_CHANGE_MD5, md5(microtime(true) . mt_rand(0, 1000000)), 86400);
         /**
          * 存放crontab id hash表，值为更新时间
          * 节点扫描是否有更新，如果存在这个任务，并且上次更新时间小于当前时间，就更新

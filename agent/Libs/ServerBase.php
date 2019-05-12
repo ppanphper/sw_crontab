@@ -71,19 +71,19 @@ abstract class ServerBase
     protected $_config = [];
 
     protected $_levels = array(
-        E_ERROR           => 'Error',
-        E_WARNING         => 'Warning',
+        E_ERROR             => 'Error',
+        E_WARNING           => 'Warning',
 //		E_PARSE           => 'Parsing Error',
-        E_PARSE           => 'Error',
-        E_NOTICE          => 'Notice',
-        E_CORE_ERROR      => 'Core Error',
-        E_CORE_WARNING    => 'Core Warning',
-        E_COMPILE_ERROR   => 'Compile Error',
-        E_COMPILE_WARNING => 'Compile Warning',
-        E_USER_ERROR      => 'User Error',
-        E_USER_WARNING    => 'User Warning',
-        E_USER_NOTICE     => 'User Notice',
-        E_STRICT          => 'Runtime Notice',
+        E_PARSE             => 'Error',
+        E_NOTICE            => 'Notice',
+        E_CORE_ERROR        => 'Core Error',
+        E_CORE_WARNING      => 'Core Warning',
+        E_COMPILE_ERROR     => 'Compile Error',
+        E_COMPILE_WARNING   => 'Compile Warning',
+        E_USER_ERROR        => 'User Error',
+        E_USER_WARNING      => 'User Warning',
+        E_USER_NOTICE       => 'User Notice',
+        E_STRICT            => 'Runtime Notice',
         E_RECOVERABLE_ERROR => 'Fatal Error',
     );
 
@@ -100,7 +100,7 @@ abstract class ServerBase
      */
     public function __construct($host = "0.0.0.0", $port = 0, $ssl = false)
     {
-        $swooleVersion = config_item('swoole_version');
+        $swooleVersion = configItem('swoole_version');
         if (version_compare(SWOOLE_VERSION, $swooleVersion, '<')) {
             die('请安装Swoole ' . $swooleVersion . ' 以上的版本!');
         }
@@ -123,7 +123,7 @@ abstract class ServerBase
         !defined('SERVER_INTERNAL_IP') && define('SERVER_INTERNAL_IP', getServerInternalIp());
         !defined('SERVER_PORT') && define('SERVER_PORT', $this->port);
 
-        $this->dateFormat = config_item('default_date_format', 'Y-m-d H:i:s');
+        $this->dateFormat = configItem('default_date_format', 'Y-m-d H:i:s');
 
         $this->_config = [
             'dispatch_mode'            => 3,
@@ -158,7 +158,7 @@ abstract class ServerBase
              * Listen队列长度，如backlog => 128，此参数将决定最多同时有多少个等待accept的连接。
              */
             'backlog'          => 20000,
-            'log_file'         => LOGS_PATH . '/sw_server.log',
+            'log_file'         => LOGS_PATH . 'sw_server.log',
             'daemonize'        => 0,
         ];
 
@@ -168,15 +168,16 @@ abstract class ServerBase
     /**
      * 服务启动前的初始化
      */
-    public static function init() {
+    public static function init()
+    {
         self::$_startMethodMaps = [
-            'start' => function($serverPID, $opt) {
+            'start'   => function ($serverPID, $opt) {
                 //已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     exit("Server is already running.\n");
                 }
             },
-            'restart' => function($serverPID, $opt) {
+            'restart' => function ($serverPID, $opt) {
                 //已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     if (self::$beforeStopCallback) {
@@ -186,7 +187,7 @@ abstract class ServerBase
                     self::formatOutput('Stopped');
                 }
             },
-            'reload' => function($serverPID, $opt) {
+            'reload'  => function ($serverPID, $opt) {
                 if (empty($serverPID)) {
                     exit("Server is not running");
                 }
@@ -196,7 +197,7 @@ abstract class ServerBase
                 posix_kill($serverPID, SIGUSR1);
                 exit(0);
             },
-            'stop' => function($serverPID, $opt) {
+            'stop'    => function ($serverPID, $opt) {
                 if (empty($serverPID)) {
                     exit("Server is not running\n");
                 }
@@ -272,18 +273,28 @@ abstract class ServerBase
      *
      * @param $name
      * @param string $separator
+     * @param SwooleProcess $process
      */
-    public function setProcessName($name, $separator = '|')
+    public function setProcessName($name, $separator = '|', $process = null)
     {
-        if (stristr(PHP_OS, 'DAR')) {
+        if (is_null($separator)) {
+            $separator = '|';
+        }
+
+        // Mac不支持设置进程名称
+        if (isMacOS()) {
             return;
         }
 
         $processNewName = $this->_serverName . $separator . $name;
+        if ($process instanceof SwooleProcess) {
+            $process->name($processNewName);
+            return;
+        }
+
         if (function_exists('cli_set_process_title')) {
             cli_set_process_title($processNewName);
-        }
-        else {
+        } else {
             swoole_set_process_name($processNewName);
         }
     }
@@ -406,7 +417,7 @@ abstract class ServerBase
          */
         Log::init();
         $this->sw->addProcess(new SwooleProcess(function ($process) {
-            if (!stristr(PHP_OS, 'DAR')) {
+            if (!isMacOS()) {
                 $process->name($this->_serverName . '|LogFlushToDisk');
             }
             return Log::flush();
@@ -586,6 +597,6 @@ abstract class ServerBase
             return;
         }
         $msg = $message . ' at ' . $filePath . '[' . $line . ']';
-        log_message($this->_levels[$severity], $msg);
+        logMessage($this->_levels[$severity], $msg);
     }
 }

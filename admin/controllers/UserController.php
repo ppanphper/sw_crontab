@@ -2,7 +2,7 @@
 
 namespace app\controllers;
 
-use mdm\admin\components\Configs;
+//use mdm\admin\components\Configs;
 use Yii;
 use app\models\User;
 use app\models\searchs\User as UserSearch;

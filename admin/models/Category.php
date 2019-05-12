@@ -31,7 +31,6 @@ class Category extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            ['status', 'required'],
             ['status', 'integer'],
             [['name'], 'string', 'max' => 30],
         ];

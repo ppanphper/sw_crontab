@@ -16,12 +16,12 @@ class Process
 {
     private static $table;
     static private $column = [
-        'taskId'     => [SwooleTable::TYPE_INT, 8],
-        'runId'      => [SwooleTable::TYPE_INT, 8],
-        'sec'        => [SwooleTable::TYPE_INT, 8],
-        'start'      => [SwooleTable::TYPE_FLOAT, 8],
-        'end'        => [SwooleTable::TYPE_FLOAT, 8],
-        'pipe'       => [SwooleTable::TYPE_INT, 8],
+        'taskId' => [SwooleTable::TYPE_INT, 8],
+        'runId'  => [SwooleTable::TYPE_INT, 8],
+        'sec'    => [SwooleTable::TYPE_INT, 8],
+        'start'  => [SwooleTable::TYPE_FLOAT, 8],
+        'end'    => [SwooleTable::TYPE_FLOAT, 8],
+        'pipe'   => [SwooleTable::TYPE_INT, 8],
     ];
     const PROCESS_START = 0;//程序开始运行
     const PROCESS_STOP = 1;//程序结束运行
@@ -51,7 +51,7 @@ class Process
      */
     public static function signal($server)
     {
-        SwooleProcess::signal(SIGCHLD, function ($sig) use($server) {
+        SwooleProcess::signal(SIGCHLD, function ($sig) use ($server) {
             //必须为false，非阻塞模式
             while ($ret = SwooleProcess::wait(false)) {
                 $pid = $ret['pid'];
@@ -63,19 +63,18 @@ class Process
                     $code = Constants::CUSTOM_CODE_END_RUN;
                     $runStatus = LoadTasks::RUN_STATUS_SUCCESS;
                     if ($ret['code'] != $code) {
-                        if($ret['code'] == Constants::EXIT_CODE_CONCURRENT) {
+                        if ($ret['code'] == Constants::EXIT_CODE_CONCURRENT) {
                             $code = Constants::CUSTOM_CODE_CONCURRENCY_LIMIT;
                             $metric = Constants::MONITOR_KEY_CONCURRENCY_LIMIT;
-                        }
-                        // 不是正常退出
+                        } // 不是正常退出
                         else {
                             $code = $ret['code'];
                             // 解析cmd命令失败
-                            if($code == Constants::EXIT_CODE_CMD_PARSE_FAILED) {
+                            if ($code == Constants::EXIT_CODE_CMD_PARSE_FAILED) {
                                 $code = Constants::CUSTOM_CODE_CMD_PARSE_FAILED;
                             }
                             // 变更运行时用户失败
-                            if($code == Constants::EXIT_CODE_RUN_USER_CHANGE_FAILED) {
+                            if ($code == Constants::EXIT_CODE_RUN_USER_CHANGE_FAILED) {
                                 $code = Constants::CUSTOM_CODE_RUN_USER_CHANGE_FAILED;
                             }
                             $metric = Constants::MONITOR_KEY_EXEC_FAILED;
@@ -88,20 +87,20 @@ class Process
 
                     $consumeTime = $processTask['end'] - $processTask['start'];
 
-                    if($ret['signal']) {
-                        $processTask['stdout'] = '进程被强制终止, 信号: '.$ret['signal'] . PHP_EOL. $processTask['stdout'];
+                    if ($ret['signal']) {
+                        $processTask['stdout'] = '进程被强制终止, 信号: ' . $ret['signal'] . PHP_EOL . $processTask['stdout'];
                     }
-                    DbLog::endLog($processTask['runId'], $processTask['taskId'], $code, "进程运行完成", $processTask['stdout'], $consumeTime);
+                    DbLog::endLog($processTask['runId'], $processTask['taskId'], $code, "任务运行完成", $processTask['stdout'], $consumeTime);
 
                     // 执行失败报警 需要放到最后面，以免查不到日志
-                    if($code != Constants::CUSTOM_CODE_END_RUN) {
+                    if ($code != Constants::CUSTOM_CODE_END_RUN) {
                         Report::taskExecFailed($processTask['taskId'], $processTask['runId'], $code, $ret['signal'], $processTask['stdout']);
                     }
                     /**
                      * 如果不是正常结束运行，就要看任务是否需要重试
                      * 过滤掉命令解析错误，变更用户错误的情况
                      */
-                    if(!in_array($code, [
+                    if (!in_array($code, [
                         Constants::CUSTOM_CODE_END_RUN,
                         Constants::CUSTOM_CODE_CMD_PARSE_FAILED,
                         Constants::CUSTOM_CODE_RUN_USER_CHANGE_FAILED
@@ -109,34 +108,33 @@ class Process
                         $loadTasksTable = LoadTasks::getTable();
                         $taskInfo = $loadTasksTable->get($processTask['taskId']);
                         // 如果任务需要重试
-                        if(!empty($taskInfo['retries']) && Tasks::$table->exist($processTask['runId'])) {
+                        if (!empty($taskInfo['retries']) && Tasks::$table->exist($processTask['runId'])) {
                             // 下一次重试的数值是否超过阀值
                             $nextRetries = Tasks::$table->incr($processTask['runId'], 'retries');
-                            if($nextRetries !== false) {
-                                if($nextRetries <= $taskInfo['retries']) {
+                            if ($nextRetries !== false) {
+                                if ($nextRetries <= $taskInfo['retries']) {
                                     // 标识运行状态为重试
                                     $runStatus = LoadTasks::RUN_STATUS_RETIRES;
                                     // 指定重试执行时间
                                     $sec = time() + $taskInfo['retryInterval'];
                                     $data = [
                                         $processTask['runId'] => [
-                                            'taskId' => $processTask['taskId'],
-                                            'sec' => $sec,
+                                            'taskId'         => $processTask['taskId'],
+                                            'sec'            => $sec,
                                             'currentRetries' => $nextRetries, // 下一次重试的数值
                                         ]
                                     ];
                                     do {
                                         // 随机选择一个worker进程进行重试，can't send messages to self
                                         $dstWorkerId = mt_rand(Server::WORKER_EXEC_TASKS, $server->setting['worker_num'] - 1);
-                                    } while($dstWorkerId == $server->worker_id);
-                                    if($taskInfo['retryInterval']) {
+                                    } while ($dstWorkerId == $server->worker_id);
+                                    if ($taskInfo['retryInterval']) {
                                         // 定时间隔时间执行
                                         $server->after($taskInfo['retryInterval'] * 1000, function () use ($server, $dstWorkerId, $data) {
                                             // 发送任务执行重试
                                             $server->sendMessage($data, $dstWorkerId);
                                         });
-                                    }
-                                    else {
+                                    } else {
                                         // 立即发送任务执行重试
                                         $server->sendMessage($data, $dstWorkerId);
                                     }
@@ -151,14 +149,14 @@ class Process
                             'runStatus' => $runStatus
                         ];
                         // 设置执行时间，以免被判定为超时
-                        if(!empty($sec)) {
+                        if (!empty($sec)) {
                             $task['sec'] = $sec;
                         }
                         Tasks::$table->set($processTask['runId'], $task);
                     }
 
                     // 上报监控系统
-                    Report::monitor($metric .'.'. $processTask['taskId']);
+                    Report::monitor($metric . '.' . $processTask['taskId']);
                 }
                 // 关闭创建的好的管道
                 self::$process_list[$pid]->close();
@@ -193,15 +191,15 @@ class Process
         $self->task = $task;
         $process = new SwooleProcess([$self, 'exec'], true, true);
         $pid = $process->start();
-        if($pid === false) {
+        if ($pid === false) {
             // 标记任务状态为创建进程失败
             if (Tasks::$table->exist($task['runId'])) {
                 Tasks::$table->set($task['runId'], ['runStatus' => LoadTasks::RUN_STATUS_CREATE_PROCESS_FAILED]);
             }
 
             // 上报监控系统创建进程失败
-            Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_FAILED.'.'.$task['taskId']);
-            log_error(__METHOD__ . ' 创建进程失败 errorMsg = '.swoole_strerror(swoole_errno()));
+            Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_FAILED . '.' . $task['taskId']);
+            logError(__METHOD__ . ' 创建进程失败 errorMsg = ' . swoole_strerror(swoole_errno()));
             return false;
         }
 
@@ -212,7 +210,7 @@ class Process
             if ($tmp) {
                 $len = mb_strlen(self::$process_stdout[$pid]);
                 // 如果一次性读取超过了最大长度，就截取
-                if(($length = (self::$max_stdout - $len)) > 0 && $tmp) {
+                if (($length = (self::$max_stdout - $len)) > 0 && $tmp) {
                     self::$process_stdout[$pid] .= mb_substr($tmp, 0, $length);
                 }
 
@@ -224,7 +222,7 @@ class Process
                     $logFilePath = Log::getLogFilePath($task['runId'], $logPath);
                     $fp = Log::getFileHandle($logFilePath);
                     if (!$fp) {
-                        log_warning('获取文件句柄失败: '.$logFilePath);
+                        logWarning('获取文件句柄失败: ' . $logFilePath);
                         return;
                     }
                     // 写入缓存区
@@ -236,32 +234,32 @@ class Process
         });
 
         self::$table->set($pid, [
-            'taskId'     => $task['taskId'],
-            'runId'      => $task['runId'],
-            'sec'        => $task['sec'],
-            'start'      => microtime(true),
-            'pipe'       => $process->pipe,
+            'taskId' => $task['taskId'],
+            'runId'  => $task['runId'],
+            'sec'    => $task['sec'],
+            'start'  => microtime(true),
+            'pipe'   => $process->pipe,
         ]);
 
         // 是否记录输出到日志文件
         if ($task['logOpt'] == Constants::LOG_OPT_WRITE_FILE) {
             self::$process_logWriteFile[$pid] = [
-                'taskId'     => $task['taskId'],
-                'runId'      => $task['runId'],
-                'sec'        => $task['sec'],
+                'taskId' => $task['taskId'],
+                'runId'  => $task['runId'],
+                'sec'    => $task['sec'],
             ];
         }
 
         self::$process_list[$pid] = $process;
 
         // 上报监控系统创建进程成功
-        Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_SUCCESS.'.'.$task['taskId']);
+        Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_SUCCESS . '.' . $task['taskId']);
 
         // 标记任务状态为创建进程成功
         if (Tasks::$table->exist($task['runId'])) {
             Tasks::$table->set($task['runId'], [
                 'runStatus' => LoadTasks::RUN_STATUS_CREATE_PROCESS_SUCCESS,
-                'pid' => $pid,
+                'pid'       => $pid,
             ]);
         }
         return true;
@@ -283,35 +281,35 @@ class Process
      */
     public function exec(SwooleProcess $process)
     {
-        if(self::$process_list) {
+        if (self::$process_list) {
             foreach (self::$process_list as $p) {
                 $p->close();
             }
         }
         self::$process_list = [];
         $command = $this->task['command'];
-        $pattern = Constants::CMD_PARSE_PATTERN;
-        preg_match_all($pattern, $command, $matches);
-        if(empty($matches[1]) || empty($matches[1][0])) {
-            $msg = '解析结果: '.var_export($matches, true);
-            // 上报监控系统解析命令失败
-            Report::monitor(Constants::MONITOR_KEY_CMD_PARSE_FAILED.'.'.$this->task['taskId']);
-            DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CMD_PARSE_FAILED, '命令解析失败', $msg);
-            exit(Constants::EXIT_CODE_CMD_PARSE_FAILED);
-        }
-        $execFile = $matches[1][0];
-        $args = [];
-        if(count($matches[1]) > 1) {
-            $args = array_slice($matches[1], 1);
-            foreach($args as &$val) {
-                // 去除双引号、单引号
-                $val = trim($val, '"\'');
-            }
-        }
+//        $pattern = Constants::CMD_PARSE_PATTERN;
+//        preg_match_all($pattern, $command, $matches);
+//        if (empty($matches[1]) || empty($matches[1][0])) {
+//            $msg = '解析结果: ' . var_export($matches, true);
+//            // 上报监控系统解析命令失败
+//            Report::monitor(Constants::MONITOR_KEY_CMD_PARSE_FAILED . '.' . $this->task['taskId']);
+//            DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CMD_PARSE_FAILED, '命令解析失败', $msg);
+//            exit(Constants::EXIT_CODE_CMD_PARSE_FAILED);
+//        }
+//        $execFile = $matches[1][0];
+//        $args = [];
+//        if (count($matches[1]) > 1) {
+//            $args = array_slice($matches[1], 1);
+//            foreach ($args as &$val) {
+//                // 去除双引号、单引号
+//                $val = trim($val, '"\'');
+//            }
+//        }
         if ($this->task['runUser'] && !self::changeUser($this->task['runUser'])) {
-            $msg = 'RunUser: '.$this->task['runUser'];
+            $msg = 'RunUser: ' . $this->task['runUser'];
             // 上报监控系统变更运行时用户失败
-            Report::monitor(Constants::MONITOR_KEY_RUN_USER_CHANGE_FAILED.'.'.$this->task['taskId']);
+            Report::monitor(Constants::MONITOR_KEY_RUN_USER_CHANGE_FAILED . '.' . $this->task['taskId']);
             DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_RUN_USER_CHANGE_FAILED, '子进程修改运行时用户失败', $msg);
             exit(Constants::EXIT_CODE_RUN_USER_CHANGE_FAILED);
         }
@@ -319,7 +317,7 @@ class Process
         // 如果设置了并发数限制, 并且不是重试(重试不占并发数)
         if ($this->task['execNum'] && empty($this->task['retries'])) {
             // 加载Redis配置文件
-            $redisConfig = config_item(null, null, 'redis');
+            $redisConfig = configItem(null, null, 'redis');
             $redisObject = new RedisClient($redisConfig);
             // 如果是限制并发任务，开始申请执行权限
             $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $this->task['taskId'] . ':' . $this->task['sec'];
@@ -331,22 +329,26 @@ class Process
             $result = $redisObject->evalScript('incr_max', $redisKey, [$this->task['execNum'], 60]);
             //限制任务多次执行，保证同时只有符合数量的任务运行。如果限制条件为0，则不限制数量
             if ($result && $result[0] == 0) {
-                $msg = '并发达到阀值，本次不执行'.PHP_EOL
-                    .'当前并发数: '.$result[1].PHP_EOL
-                    .'限制并发数: '.$this->task['execNum'];
+                $msg = '并发达到阀值，本次不执行' . PHP_EOL
+                    . '当前并发数: ' . $result[1] . PHP_EOL
+                    . '限制并发数: ' . $this->task['execNum'];
                 echo $msg;
                 exit(Constants::EXIT_CODE_CONCURRENT);
             }
         }
 
         // 上报监控系统创建进程失败
-        Report::monitor(Constants::MONITOR_KEY_CHILD_PROCESS_STARTS_RUN.'.'.$this->task['taskId']);
-        DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '子进程任务开始执行');
+        Report::monitor(Constants::MONITOR_KEY_CHILD_PROCESS_STARTS_RUN . '.' . $this->task['taskId']);
+        DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '任务开始执行');
 
-        log_info('任务开始执行'.(!empty($this->task['retries']) ? '(第'.$this->task['retries'].'次重试)' : '').': Id = '.$this->task['taskId'] .'; runId = '.$this->task['runId'].'; command = '.$this->task['command']);
-        $bool = $process->exec($execFile, $args);
+        logInfo('任务开始执行' . (!empty($this->task['retries']) ? '(第' . $this->task['retries'] . '次重试)' : '') . ': Id = ' . $this->task['taskId'] . '; runId = ' . $this->task['runId'] . '; command = ' . $this->task['command']);
+        if (isWindowsOS()) {
+            $bool = $process->exec('cmd', ['/C', $command]);
+        } else {
+            $bool = $process->exec('/bin/sh', ['-c', $command]);
+        }
         // 执行失败
-        if(!$bool) {
+        if (!$bool) {
             exit(Constants::CUSTOM_CODE_EXEC_FAILED);
         }
     }
@@ -361,7 +363,7 @@ class Process
     public static function changeUser($user)
     {
         if (!function_exists('posix_getpwnam')) {
-            log_error(__METHOD__ . ": require posix extension.");
+            logError(__METHOD__ . ": require posix extension.");
             return false;
         }
         $user = posix_getpwnam($user);
@@ -377,7 +379,8 @@ class Process
     /**
      * @return SwooleTable|null
      */
-    public static function getTable() {
+    public static function getTable()
+    {
         return self::$table;
     }
 }

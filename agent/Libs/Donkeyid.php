@@ -2,6 +2,9 @@
 
 namespace Libs;
 
+use \Swoole\Table as SwooleTable;
+use \Swoole\Lock as SwooleLock;
+
 /**
  * 获取唯一id
  * Created by PhpStorm.
@@ -66,11 +69,11 @@ class Donkeyid
      */
     private function create_table()
     {
-        $this->table = new \swoole_table(3);
+        $this->table = new SwooleTable(3);
         $this->table->column("last_timestamp", \swoole_table::TYPE_INT, 8);
         $this->table->column("sequence", \swoole_table::TYPE_INT, 4);
         $this->table->create();
-        $this->lock = new \swoole_lock(SWOOLE_SPINLOCK);
+        $this->lock = new SwooleLock(SWOOLE_SPINLOCK);
     }
 
     /**
@@ -99,7 +102,11 @@ class Donkeyid
     public function dk_get_next_id()
     {
         $now = $this->get_curr_timestamp_ms();
-        $this->lock->lock();
+        $isMacOS = isMacOS();
+        // MacOS Mojave使用锁会异常退出
+        if (!$isMacOS) {
+            $this->lock->lock();
+        }
         $col = $this->table->get(self::snowflake);
         if ($col == false || $col["last_timestamp"] > $now) {
             $last_timestamp = $now;
@@ -115,7 +122,10 @@ class Donkeyid
             }
         }
         $this->table->set(self::snowflake, array("last_timestamp" => $now, "sequence" => $sequence));
-        $this->lock->unlock();
+        // MacOS Mojave使用锁会异常退出
+        if (!$isMacOS) {
+            $this->lock->unlock();
+        }
         $id = (($now - ($this->epoch * 1000) & (-1 ^ (-1 << self::TIMESTAMP_BITS))) << self::TIMESTAMP_LEFT_SHIFT)
             | (($this->node_id & (-1 ^ (-1 << self::NODE_ID_BITS))) << self::NODE_ID_LEFT_SHIFT)
             | ($sequence);

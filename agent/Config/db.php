@@ -9,7 +9,7 @@ return [
     'sw_crontab' => [
         'dsn'            => 'mysql:host=127.0.0.1;port=3306;dbname=sw_crontab',
         'username'       => 'root',
-        'password'       => '',
+        'password'       => 'root',
         /**
          * PDO::ATTR_EMULATE_PREPARES 启用或禁用预处理语句的模拟。
          * 有些驱动不支持或有限度地支持本地预处理。使用此设置强制PDO总是模拟预处理语句（如果为 TRUE ），或试着使用本地预处理语句（如果为 FALSE）。

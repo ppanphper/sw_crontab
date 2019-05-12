@@ -1,7 +1,7 @@
 <?php
 return [
     'socket_type' => 'tcp',
-    'prefix'      => 'PHP:',
+    'prefix'      => 'SWC:',
     'host'        => '127.0.0.1',
     'password'    => null,
     'port'        => 6379,
@@ -11,7 +11,7 @@ return [
      * 集群模式
      */
     'phpredis_cluster' => [
-        'prefix'       => 'PHP:',
+        'prefix'       => 'SWC:',
         'servers'      => [
             '127.0.0.1:6379',
             '127.0.0.1:6380',

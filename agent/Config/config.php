@@ -62,7 +62,6 @@ return [
     'flush_db_log_max_retry_num' => 3,
 
     'log'            => [
-        // 日志存放路径
         'path'         => '',
         // 日志文件名前缀
         'prefix'       => '',

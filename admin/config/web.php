@@ -53,7 +53,9 @@ $config = [
             'targets'    => [
                 [
                     'class'  => 'yii\log\FileTarget',
+					'logFile' => '/tmp/swc_app.log',
                     'levels' => ['error', 'warning'],
+					'logVars' => ['_GET', '_POST'],
                 ],
             ],
         ],
@@ -148,7 +150,7 @@ $config = [
         ],
     ],
     'as access'      => [
-        'class'        => 'app\components\AccessControl',
+        'class'        => 'app\components\mdm\admin\components\AccessControl',
         'allowActions' => [
             //这里是允许访问的action
             //controller/action

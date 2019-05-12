@@ -61,10 +61,10 @@ class Tasks
                 // 解析crontab规则
                 $ret = ParseCrontab::parse($task["rule"], $time);
                 if ($ret === false) {
-                    log_error(ParseCrontab::$error);
+                    logError(ParseCrontab::$error);
                     continue;
                 }
-                if(empty($ret)) {
+                if (empty($ret)) {
                     continue;
                 }
 
@@ -73,11 +73,11 @@ class Tasks
                     $runId = Donkeyid::getInstance()->dk_get_next_id();
                     // 插入到任务内存表
                     self::$table->set($runId, [
-                        'minute' => $minute,
-                        'sec' => $time + $sec,
-                        'taskId' => $id,
+                        'minute'    => $minute,
+                        'sec'       => $time + $sec,
+                        'taskId'    => $id,
                         'runStatus' => LoadTasks::RUN_STATUS_NORMAL,
-                        'retries' => 0,
+                        'retries'   => 0,
                     ]);
                 }
             }
@@ -95,20 +95,20 @@ class Tasks
             $loadTasks = LoadTasks::getTable();
             $currentTime = time();
             $timeOutFailedMap = [
-                LoadTasks::RUN_STATUS_START => 1,
+                LoadTasks::RUN_STATUS_START                  => 1,
                 LoadTasks::RUN_STATUS_CREATE_PROCESS_SUCCESS => 1,
-                LoadTasks::RUN_STATUS_ERROR => 1
+                LoadTasks::RUN_STATUS_ERROR                  => 1
             ];
             // 遍历Tasks内存表，不是LoadTasks内存表
             foreach (self::$table as $runId => $task) {
                 // 当前时间小于任务执行时间则跳过
-                if($currentTime < $task['sec']) {
+                if ($currentTime < $task['sec']) {
                     continue;
                 }
                 // 如果任务已经被删除
                 $taskInfo = $loadTasks->get($task['taskId']);
                 // key不存在会返回false
-                if($taskInfo === false) {
+                if ($taskInfo === false) {
                     self::$table->del($runId);
                     continue;
                 }
@@ -119,15 +119,15 @@ class Tasks
                 }
                 // 超时
                 if ($maxTime > 0 && ($currentTime - $task['sec']) > $maxTime) {
-                    $msg = '最大执行时间: ' . msTimeFormat($maxTime).PHP_EOL;
+                    $msg = '最大执行时间: ' . msTimeFormat($maxTime) . PHP_EOL;
 
                     if (isset($timeOutFailedMap[$task['runStatus']])) {
-                        if(empty($task['runId'])) {
+                        if (empty($task['runId'])) {
                             $task['runId'] = $runId;
                         }
 
                         // 如果是限制了并发数的任务
-                        if($taskInfo['execNum']) {
+                        if ($taskInfo['execNum']) {
                             $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $task['taskId'] . ':' . $task['sec'];
                             $redisObject = RedisClient::getInstance();
                             // 任务执行并发数减一
@@ -135,8 +135,8 @@ class Tasks
                         }
 
                         // 如果超时选项是强杀, 并且进程存在
-                        if($taskInfo['timeoutOpt'] == Constants::TIME_OUT_OPT_KILL) {
-                            if(Process::getTable()->exist($task['pid']) &&  SwooleProcess::kill($task['pid'], 0)) {
+                        if ($taskInfo['timeoutOpt'] == Constants::TIME_OUT_OPT_KILL) {
+                            if (Process::getTable()->exist($task['pid']) && SwooleProcess::kill($task['pid'], 0)) {
                                 $msg .= '强制终止进程';
                                 SwooleProcess::kill($task['pid'], SIGKILL);
                             }
@@ -163,7 +163,7 @@ class Tasks
                 if ($min == $task["minute"] && $time == $task["sec"] && $task["runStatus"] == LoadTasks::RUN_STATUS_NORMAL) {
                     $data[$runId] = [
                         'taskId' => $task['taskId'],
-                        'sec' => $task['sec'],
+                        'sec'    => $task['sec'],
                     ];
                 }
             }

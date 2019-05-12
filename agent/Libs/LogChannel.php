@@ -20,7 +20,7 @@ class LogChannel
     public function __construct($channelSize = null)
     {
         if (empty($channelSize)) {
-            $channelSize = config_item('channel_size', 1024 * 1024 * 512);
+            $channelSize = configItem('channel_size', 1024 * 1024 * 512);
         }
         $this->_channel = new SwooleChannel($channelSize);
     }
