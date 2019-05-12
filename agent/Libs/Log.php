@@ -198,7 +198,6 @@ class Log
             // self::$fp = self::getMmapFileHandle($filePath);
             self::$fp = fopen($filePath, 'ab');
             if (empty(self::$fp)) {
-//				echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
@@ -227,12 +226,8 @@ class Log
                             // 获取新的日志文件路径
                             $filePath = self::getLogFilePath($log['fn']);
                             self::$fp = fopen($filePath, 'ab');
-                            // 打开新的文件映射到内存中
-//							self::$fp = self::getMmapFileHandle($filePath);
                             if (empty(self::$fp)) {
-//								echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
-
                                 return FALSE;
                             }
                             @chmod($filePath, self::$_mode);
@@ -258,7 +253,6 @@ class Log
             $filePath = self::getLogFilePath();
             self::$fp = fopen($filePath, 'ab');
             if (empty(self::$fp)) {
-//				echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
@@ -287,10 +281,7 @@ class Log
                         // 获取新的日志文件路径
                         $filePath = self::getLogFilePath($log['fn']);
                         self::$fp = fopen($filePath, 'ab');
-                        // 打开新的文件映射到内存中
-//						self::$fp = self::getMmapFileHandle($filePath);
                         if (empty(self::$fp)) {
-//							echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败 = '.$filePath, 'Core Error');
                             echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                             return FALSE;
                         }
