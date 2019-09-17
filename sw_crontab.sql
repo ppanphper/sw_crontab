@@ -469,7 +469,7 @@ CREATE TABLE `via_table` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `aid` int(11) unsigned NOT NULL COMMENT 'A表Id',
   `bid` int(11) unsigned NOT NULL COMMENT 'B表Id',
-  `type` tinyint(3) unsigned NOT NULL COMMENT '表类型 1=agent_category 2=crontab_agent 3=crontab_owner',
+  `type` tinyint(3) unsigned NOT NULL COMMENT '表类型 1=agent_category 2=crontab_agent 3=crontab_not_in_agents 4=crontab_owner',
   PRIMARY KEY (`id`),
   KEY `IDX_TYPE_AID` (`type`,`aid`),
   KEY `IDX_TYPE_BID` (`type`,`bid`)
