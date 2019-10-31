@@ -17,6 +17,7 @@ mb_internal_encoding('UTF-8');
 
 define('ROOT_PATH', __DIR__ . '/');
 define('LIBS_PATH', ROOT_PATH . 'Libs/');
+define('MODELS_PATH', ROOT_PATH . 'Models/');
 define('CONFIG_PATH', ROOT_PATH . 'Config/');
 define('TPL_PATH', ROOT_PATH . 'Tpl/');
 define('ENVIRONMENT', !empty($envInit['env']) ? $envInit['env'] : 'prod');
@@ -46,6 +47,7 @@ if (!class_exists('Agent\\Libs\\Loader')) {
     }
     require_once $autoloadPath;
     Loader::addNameSpace('Libs', LIBS_PATH);
+    Loader::addNameSpace('Models', MODELS_PATH);
     Loader::register();
 }
 

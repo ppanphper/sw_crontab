@@ -2,7 +2,7 @@
 
 namespace Libs;
 
-use Models\DB;
+use \Models\DB;
 use \Swoole\Server as SwooleServer;
 use \Swoole\Process as SwooleProcess;
 

@@ -14,15 +14,13 @@ class DB
 {
     private static $_dbs = [];
 
-    protected static $_defaultDBName = null;
-
     public static function init() {
         self::getInstance();
-        self::$_defaultDBName = configItem('default_select_db');
     }
 
     /**
      * 获取DB实例
+     * 注意，此方法调用在worker/process/task进程中，所以每个进程都会需要调用一次
      *
      * @param string $name
      *
@@ -32,7 +30,7 @@ class DB
     public static function getInstance($name='')
     {
         // 默认数据库
-        $name = strtolower($name) ?: self::$_defaultDBName;
+        $name = strtolower($name) ?: configItem('default_select_db');;
         if (isset(self::$_dbs[$name])) {
             return self::$_dbs[$name];
         }

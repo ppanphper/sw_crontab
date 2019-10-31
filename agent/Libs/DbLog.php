@@ -173,13 +173,13 @@ class DbLog
                         }
                         // 存储日志
                         if (!Logs::saveLog([
-                            'task_id'      => $originLog['taskId'],
-                            'run_id'       => $originLog['runId'],
-                            'code'         => $originLog['code'],
-                            'title'        => $originLog['title'],
-                            'msg'          => $msg,
-                            'consume_time' => $originLog['consumeTime'],
-                            'created'      => $originLog['created'],
+                            'taskId'        => $originLog['taskId'],
+                            'runId'         => $originLog['runId'],
+                            'code'          => $originLog['code'],
+                            'title'         => $originLog['title'],
+                            'msg'           => $msg,
+                            'consumeTime'   => $originLog['consumeTime'],
+                            'created'       => $originLog['created'],
                         ])) {
                             if (!isset($originLog['retryCount'])) {
                                 $originLog['retryCount'] = 0;

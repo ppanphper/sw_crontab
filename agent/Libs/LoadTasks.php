@@ -114,28 +114,34 @@ class LoadTasks
         $offset = 0;
         $limit = 1000;
         $agentId = isset($agentInfo['id']) ? $agentInfo['id'] : 0;
-        while (true) {
+        $keepLoop = true;
+        while ($keepLoop) {
             // 获取当前节点需要执行的任务数据
             $tasks = Crontab::getCurrentNodeTaskData($agentId, $loadSpecifiedIds, Crontab::STATUS_ENABLED, $offset, $limit);
             if (empty($tasks)) break;
             foreach ($tasks as $task) {
-                // 如果节点加载任务数量没有超限
-                if (count(self::$_table) <= TASK_MAX_LOAD_SIZE) {
-                    self::$_table->set($task['id'], [
-                        'name'          => $task['name'],
-                        'rule'          => $task['rule'],
-                        'execNum'       => $task['concurrency'],
-                        'maxTime'       => $task['max_process_time'],
-                        'timeoutOpt'    => $task['timeout_opt'],
-                        'logOpt'        => $task['log_opt'],
-                        'runUser'       => $task['run_user'],
-                        'command'       => $task['command'],
-                        'retries'       => $task['retries'],
-                        'retryInterval' => $task['retry_interval'],
-                        'noticeWay'     => $task['notice_way'],
-                        'updateTime'    => $task['update_time'],
-                    ]);
+
+                if (count(self::$_table) > TASK_MAX_LOAD_SIZE) {
+                    // 达到最大加载任务数，就终止加载
+                    $keepLoop = false;
+                    break;
                 }
+
+                // 如果内存不够，会出现 Swoole_table::set(): unable to allocate memory
+                self::$_table->set($task['id'], [
+                    'name'          => $task['name'],
+                    'rule'          => $task['rule'],
+                    'execNum'       => $task['concurrency'],
+                    'maxTime'       => $task['max_process_time'],
+                    'timeoutOpt'    => $task['timeout_opt'],
+                    'logOpt'        => $task['log_opt'],
+                    'runUser'       => $task['run_user'],
+                    'command'       => $task['command'],
+                    'retries'       => $task['retries'],
+                    'retryInterval' => $task['retry_interval'],
+                    'noticeWay'     => $task['notice_way'],
+                    'updateTime'    => $task['update_time'],
+                ]);
             }
             $offset += $limit;
         }
