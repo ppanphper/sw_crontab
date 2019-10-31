@@ -95,4 +95,8 @@ class StringHelper {
         }
         return false;
     }
+
+    public static function getIpPortFormat($ip, $port, $separator = ':') {
+        return $ip . $separator . $port;
+    }
 }

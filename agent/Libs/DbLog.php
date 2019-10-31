@@ -8,6 +8,7 @@
 
 namespace Libs;
 
+use Models\Logs;
 use \Swoole\Table as SwooleTable;
 
 class DbLog
@@ -140,7 +141,6 @@ class DbLog
     private static function writeLog($logPrefix)
     {
         try {
-            $db = getDBInstance();
             $stats = self::$_logChannel->stats();
             $dateFormat = configItem('default_date_format');
             if ($stats['queue_num'] > 0) {
@@ -171,7 +171,8 @@ class DbLog
                             self::$table->del($key);
                             continue;
                         }
-                        if (!$db->insertInto('logs', [
+                        // 存储日志
+                        if (!Logs::saveLog([
                             'task_id'      => $originLog['taskId'],
                             'run_id'       => $originLog['runId'],
                             'code'         => $originLog['code'],
@@ -179,7 +180,7 @@ class DbLog
                             'msg'          => $msg,
                             'consume_time' => $originLog['consumeTime'],
                             'created'      => $originLog['created'],
-                        ])->execute()) {
+                        ])) {
                             if (!isset($originLog['retryCount'])) {
                                 $originLog['retryCount'] = 0;
                             }

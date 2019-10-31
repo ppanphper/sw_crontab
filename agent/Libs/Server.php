@@ -2,6 +2,7 @@
 
 namespace Libs;
 
+use Models\DB;
 use \Swoole\Server as SwooleServer;
 use \Swoole\Process as SwooleProcess;
 
@@ -85,7 +86,13 @@ class Server extends ServerBase
                 $server->tick(1000, function () use ($server, &$dstWorkerId) {
                     $tasks = Tasks::getTasks();
                     if ($tasks) {
-                        // 轮询发送
+                        /**
+                         * 轮询发送
+                         * 在Task进程内调用sendMessage是阻塞等待的，发送消息完成后返回
+                         * task_ipc_mode SW_IPC_UNIXSOCK 使用swSocket_write_blocking方法发送(write fd)
+                         * https://github.com/swoole/swoole-src/blob/4d7b6665998a8f58a292149afce0863ba966744c/src/core/socket.c#L175:5
+                         * TODO 本身发送很快，但是也有可能会与到极端情况导致超过1秒，导致后续任务不准时
+                         */
                         $server->sendMessage($tasks, $dstWorkerId);
                         $dstWorkerId++;
                         if ($dstWorkerId >= $server->setting['worker_num']) {
@@ -165,6 +172,7 @@ class Server extends ServerBase
      */
     protected function initServer()
     {
+        DB::init();// 数据库实例初始化
         LoadTasks::init();// 载入crontab表符合条件的记录
         Donkeyid::init();//初始化donkeyid对象
         Process::init();//载入任务进程处理表，目前有哪些进程在执行任务

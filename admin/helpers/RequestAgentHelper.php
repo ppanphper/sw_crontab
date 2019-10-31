@@ -17,16 +17,16 @@ class RequestAgentHelper
     /**
      * 控制请求
      *
-     * @param string $name
+     * @param string $cmdName
      * @param array $params
      * @param $ip
      * @param $port
      *
      * @return array
      */
-    public static function controlCommand($name, array $params, $ip, $port) {
+    public static function controlCommand($cmdName, array $params, $ip, $port) {
         $data = [
-            'cmd' => $name,
+            'cmd' => $cmdName,
             'param' => $params,
             'type' => Constants::SW_CONTROL_CMD,
         ];

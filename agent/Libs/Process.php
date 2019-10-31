@@ -288,24 +288,6 @@ class Process
         }
         self::$process_list = [];
         $command = $this->task['command'];
-//        $pattern = Constants::CMD_PARSE_PATTERN;
-//        preg_match_all($pattern, $command, $matches);
-//        if (empty($matches[1]) || empty($matches[1][0])) {
-//            $msg = '解析结果: ' . var_export($matches, true);
-//            // 上报监控系统解析命令失败
-//            Report::monitor(Constants::MONITOR_KEY_CMD_PARSE_FAILED . '.' . $this->task['taskId']);
-//            DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CMD_PARSE_FAILED, '命令解析失败', $msg);
-//            exit(Constants::EXIT_CODE_CMD_PARSE_FAILED);
-//        }
-//        $execFile = $matches[1][0];
-//        $args = [];
-//        if (count($matches[1]) > 1) {
-//            $args = array_slice($matches[1], 1);
-//            foreach ($args as &$val) {
-//                // 去除双引号、单引号
-//                $val = trim($val, '"\'');
-//            }
-//        }
         if ($this->task['runUser'] && !self::changeUser($this->task['runUser'])) {
             $msg = 'RunUser: ' . $this->task['runUser'];
             // 上报监控系统变更运行时用户失败
