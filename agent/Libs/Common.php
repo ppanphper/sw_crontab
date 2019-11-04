@@ -100,7 +100,7 @@ function getArg(&$arg, $level = 0)
 {
     // 最大层数
     if ($level >= TRACE_LEVEL) {
-        return json_encode($arg);
+        return json_encode($arg, JSON_UNESCAPED_UNICODE);
     }
     if (is_object($arg)) {
         $arr = (array)$arg;
@@ -115,7 +115,7 @@ function getArg(&$arg, $level = 0)
 
         $arg = get_class($arg) . ' Object (' . implode(',', $args) . ')';
     }
-    return $arg;
+    return !is_string($arg) ? json_encode($arg, JSON_UNESCAPED_UNICODE) : $arg;
 }
 
 /**
@@ -164,7 +164,7 @@ function convenienceDebug($traces, $traces_to_ignore = 0, $split = PHP_EOL, $exc
         }
         // 调用的方法与参数
         if (DEBUG_TRACE_DETAIL) {
-            $args = empty($trace['args']) ? '' : json_encode($trace['args']);
+            $args = empty($trace['args']) ? '' : json_encode($trace['args'], JSON_UNESCAPED_UNICODE);
             $args = mb_strlen($args, 'UTF-8') > DEBUG_TRACE_DETAIL_PARAM_LENGTH ? mb_substr($args, 0, DEBUG_TRACE_DETAIL_PARAM_LENGTH, 'UTF-8') . '...' : $args;
             $msg .= '(' . $args . ')';
         } else {

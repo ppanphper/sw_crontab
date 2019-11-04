@@ -271,15 +271,17 @@ class Agents extends \yii\db\ActiveRecord
         parent::afterSave($insert, $changedAttributes);
         $oldAttributes = $this->getOldAttributes();
         $checkChangeFields = [
-            'ip',
-            'port',
+//            'ip',
+//            'port',
             'status'
         ];
         foreach($checkChangeFields as $field) {
             // 如果状态有变更，通知Agent重新加载节点信息
             if(isset($changedAttributes[$field]) && $changedAttributes[$field] != $oldAttributes[$field]) {
-                $ip = isset($changedAttributes['ip']) ? $changedAttributes['ip'] : $oldAttributes['ip'];
-                $port = isset($changedAttributes['port']) ? $changedAttributes['port'] : $oldAttributes['port'];
+//                $ip = isset($changedAttributes['ip']) ? $changedAttributes['ip'] : $oldAttributes['ip'];
+//                $port = isset($changedAttributes['port']) ? $changedAttributes['port'] : $oldAttributes['port'];
+                $ip = $oldAttributes['ip'];
+                $port = $oldAttributes['port'];
                 $key = Constants::REDIS_KEY_AGENT_CHANGE_MD5 . $ip .'_'.$port;
                 Yii::$app->redis->set($key, microtime(true), 86400);
                 break;

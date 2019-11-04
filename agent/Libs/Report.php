@@ -9,6 +9,7 @@
 
 namespace Libs;
 
+use Models\User;
 use \Swoole\Client as SwooleClient;
 
 class Report
@@ -216,14 +217,7 @@ class Report
         // 有负责人
         if (!empty($taskId)) {
             try {
-                $userData = getDBInstance()
-                    ->from('via_table a')
-                    ->select(null)
-                    ->select('b.nickname, b.mobile, b.email')
-                    ->innerJoin('user b ON b.id = a.bid AND a.type = ' . Constants::TYPE_CRONTAB_OWNER)->where([
-                        'a.aid'    => $taskId,
-                        'b.status' => 1,
-                    ])->fetchAll();
+                $userData = User::getUserDataByTaskId($taskId);
             } catch (\Exception $e) {
                 logError(__METHOD__ . ' 查用户信息失败: taskId = ' . $taskId . '; errorMsg = ' . $e->getMessage());
             }
@@ -255,10 +249,10 @@ class Report
             }
 
             // 发送短信
-//			if($noticeWay & Constants::NOTICE_WAY_SEND_SMS) {}
+//            if($noticeWay & Constants::NOTICE_WAY_SEND_SMS) {}
 
             // 发送微信
-//			if($noticeWay & Constants::NOTICE_WAY_SEND_WECHAT) {}
+//            if($noticeWay & Constants::NOTICE_WAY_SEND_WECHAT) {}
         }
 
         if ($to) {

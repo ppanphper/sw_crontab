@@ -17,7 +17,7 @@ class Loader
     /**
      * 命名空间的路径
      */
-    protected static $namespaces;
+    protected static $_namespaces;
 
     /**
      * 自动载入类
@@ -27,10 +27,10 @@ class Loader
     public static function autoload($class)
     {
         $root = explode('\\', trim($class, '\\'), 2);
-        if (count($root) > 1 and isset(self::$namespaces[$root[0]])) {
-            $filePath = self::$namespaces[$root[0]] . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $root[1]) . '.php';
+        if (count($root) > 1 and isset(self::$_namespaces[$root[0]])) {
+            $filePath = self::$_namespaces[$root[0]] . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $root[1]) . '.php';
             if (is_file($filePath)) {
-                require $filePath;
+                require_once $filePath;
             }
         }
     }
@@ -53,6 +53,6 @@ class Loader
      */
     public static function addNameSpace($root, $path)
     {
-        self::$namespaces[$root] = $path;
+        self::$_namespaces[$root] = $path;
     }
 }

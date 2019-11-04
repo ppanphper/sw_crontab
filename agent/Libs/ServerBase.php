@@ -20,12 +20,12 @@ use \Swoole\Process as SwooleProcess;
  */
 abstract class ServerBase
 {
-    protected static $options = array();
+    protected static $_options = array();
     /**
      * SwooleServer对象
      * @var null|SwooleServer
      */
-    protected $sw = null;
+    protected $_sw = null;
 
     /**
      * 默认日期格式
@@ -34,29 +34,29 @@ abstract class ServerBase
      */
     public $dateFormat;
 
-    protected $host = null;
+    protected $_host = null;
 
-    protected $port = null;
+    protected $_port = null;
 
-    protected $ssl = false;
+    protected $_ssl = false;
 
-    protected static $beforeStopCallback;
-    protected static $beforeReloadCallback;
+    protected static $_beforeStopCallback;
+    protected static $_beforeReloadCallback;
 
     public static $swooleMode;
     public static $optionKit;
     public static $pidFile;
 
-    public static $defaultOptions = array(
+    protected static $_defaultOptions = [
         'd|daemon'  => '启用守护进程模式',
         'h|host?'   => '指定监听地址',
         'p|port?'   => '指定监听端口',
         'help'      => '显示帮助界面',
         'b|base'    => '使用BASE模式启动',
-//		'w|worker?' => '设置Worker进程的数量',
-        'r|thread?' => '设置Reactor线程的数量',
-//		't|tasker?' => '设置Task进程的数量',
-    );
+		'w|worker_num?' => '设置Worker进程的数量',
+        'r|reactor_num?' => '设置Reactor线程的数量',
+		't|task_worker_num?' => '设置Task进程的数量',
+    ];
 
     /**
      * 连接池名称
@@ -106,22 +106,42 @@ abstract class ServerBase
         }
 
         $flag = $ssl ? (SWOOLE_SOCK_TCP | SWOOLE_SSL) : SWOOLE_SOCK_TCP;
-        if (!empty(self::$options['base'])) {
+        if (!empty(self::$_options['base'])) {
             self::$swooleMode = SWOOLE_BASE;
         } elseif (extension_loaded('swoole')) {
             self::$swooleMode = SWOOLE_PROCESS;
         }
 
-        $this->sw = new SwooleServer($host, $port, self::$swooleMode, $flag);
+        /** 脚本启动参数配置 */
+        // 自定义监听地址, 针对多网卡支持
+        if (!empty(self::$_options['host'])) {
+            $host = intval(self::$_options['host']);
+        }
+
+        $opt = [
+            'port' => $port,
+            'worker_num' => 10,
+            'reactor_num' => 0,
+            'task_worker_num' => 4,
+        ];
+        foreach($opt as $key => $val) {
+            // 自定义监听启动端口
+            if (!empty(self::$_options[$key])) {
+                $opt[$key] = intval(self::$_options[$key]);
+            }
+        }
+        /** END */
+
+        $this->_sw = new SwooleServer($host, $opt['port'], self::$swooleMode, $flag);
 
         //store current ip port
-        $this->host = $host;
-        $this->port = $this->sw->port;
-        $this->ssl = $ssl;
+        $this->_host = $this->_sw->host;
+        $this->_port = $this->_sw->port;
+        $this->_ssl = $ssl;
 
         // 定义内部IP和端口常量
         !defined('SERVER_INTERNAL_IP') && define('SERVER_INTERNAL_IP', getServerInternalIp());
-        !defined('SERVER_PORT') && define('SERVER_PORT', $this->port);
+        !defined('SERVER_PORT') && define('SERVER_PORT', $this->_port);
 
         $this->dateFormat = configItem('default_date_format', 'Y-m-d H:i:s');
 
@@ -148,8 +168,8 @@ abstract class ServerBase
             'heartbeat_idle_time'      => 180, // 3分钟客户端没有发送请求，关闭连接
             'open_cpu_affinity'        => 1,
 
-            'worker_num'      => 10,
-            'task_worker_num' => 4,
+            'worker_num'      => $opt['worker_num'],
+            'task_worker_num' => $opt['task_worker_num'],
 
             'max_request'      => 0, //必须设置为0否则并发任务容易丢,don't change this number
             'task_max_request' => 0, // 不退出
@@ -160,7 +180,17 @@ abstract class ServerBase
             'backlog'          => 20000,
             'log_file'         => LOGS_PATH . 'sw_server.log',
             'daemonize'        => 0,
+
+            /**
+             * 异步安全重启特性
+             * @see https://wiki.swoole.com/wiki/page/775.html
+             */
+            'reload_async'     => true,
         ];
+
+        if ($opt['reactor_num'] > 0) {
+            $this->_config['reactor_num'] = $opt['reactor_num'];
+        }
 
         set_error_handler([$this, '_error_handler']);
     }
@@ -180,8 +210,8 @@ abstract class ServerBase
             'restart' => function ($serverPID, $opt) {
                 //已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
-                    if (self::$beforeStopCallback) {
-                        call_user_func(self::$beforeStopCallback, $opt);
+                    if (self::$_beforeStopCallback) {
+                        call_user_func(self::$_beforeStopCallback, $opt);
                     }
                     posix_kill($serverPID, SIGTERM);
                     self::formatOutput('Stopped');
@@ -191,8 +221,8 @@ abstract class ServerBase
                 if (empty($serverPID)) {
                     exit("Server is not running");
                 }
-                if (self::$beforeReloadCallback) {
-                    call_user_func(self::$beforeReloadCallback, $opt);
+                if (self::$_beforeReloadCallback) {
+                    call_user_func(self::$_beforeReloadCallback, $opt);
                 }
                 posix_kill($serverPID, SIGUSR1);
                 exit(0);
@@ -201,8 +231,8 @@ abstract class ServerBase
                 if (empty($serverPID)) {
                     exit("Server is not running\n");
                 }
-                if (self::$beforeStopCallback) {
-                    call_user_func(self::$beforeStopCallback, $opt);
+                if (self::$_beforeStopCallback) {
+                    call_user_func(self::$_beforeStopCallback, $opt);
                 }
                 posix_kill($serverPID, SIGTERM);
                 exit(0);
@@ -235,7 +265,7 @@ abstract class ServerBase
         }
 
         $kit = self::$optionKit;
-        foreach (self::$defaultOptions as $k => $v) {
+        foreach (self::$_defaultOptions as $k => $v) {
             //解决Windows平台乱码问题
             if (PHP_OS == 'WINNT') {
                 $v = iconv('utf-8', 'gbk', $v);
@@ -246,20 +276,21 @@ abstract class ServerBase
         $opt = $kit->parse($argv);
         if (empty($argv[1]) or isset($opt['help']) || !isset(self::$_startMethodMaps[$argv[1]])) {
             usage:
-            $kit->specs->printOptions("php {$argv[0]} start|restart|stop|reload");
+            $kit->specs->printOptions("php {$argv[0]} " . implode('|', array_keys(self::$_startMethodMaps)));
             exit(0);
         }
         call_user_func_array(self::$_startMethodMaps[$argv[1]], [$serverPID, $opt]);
-        self::$options = $opt;
+        self::$_options = $opt;
         self::formatOutput('Starting');
+        // 回调闭包启动函数
         $startFunction($opt);
     }
 
     public function run()
     {
-        $this->sw->set($this->_config);
+        $this->_sw->set($this->_config);
         $this->initServer();
-        $this->sw->start();
+        $this->_sw->start();
     }
 
     public function setServerName($name)
@@ -310,8 +341,8 @@ abstract class ServerBase
         $this->formatOutput("Master PID = {$server->master_pid}");
         $this->formatOutput("Manager PID = {$server->manager_pid}");
         $this->formatOutput("Swoole Version = [" . SWOOLE_VERSION . "]");
-        $this->formatOutput("Listen IP = {$this->host}");
-        $this->formatOutput("Listen Port = {$this->port}");
+        $this->formatOutput("Listen IP = {$this->_host}");
+        $this->formatOutput("Listen Port = {$this->_port}");
         $this->formatOutput("Reactor Number = {$server->setting['reactor_num']}");
         $this->formatOutput("Worker Number = {$server->setting['worker_num']}");
         $this->formatOutput("Task Number = {$server->setting['task_worker_num']}");
@@ -416,7 +447,7 @@ abstract class ServerBase
          * 日志进程，异步刷日志到文件
          */
         Log::init();
-        $this->sw->addProcess(new SwooleProcess(function ($process) {
+        $this->_sw->addProcess(new SwooleProcess(function ($process) {
             if (!isMacOS()) {
                 $process->name($this->_serverName . '|LogFlushToDisk');
             }
@@ -490,7 +521,7 @@ abstract class ServerBase
             Loader::addNameSpace('GetOptionKit', LIBS_PATH . "GetOptionKit/src/GetOptionKit");
             self::$optionKit = new \GetOptionKit\GetOptionKit;
         }
-        foreach (self::$defaultOptions as $k => $v) {
+        foreach (self::$_defaultOptions as $k => $v) {
             if ($k[0] == $specString[0]) {
                 throw new ServerOptionException("不能添加系统保留的选项名称");
             }
@@ -507,7 +538,7 @@ abstract class ServerBase
      */
     public static function beforeStop(callable $function)
     {
-        self::$beforeStopCallback = $function;
+        self::$_beforeStopCallback = $function;
     }
 
     /**
@@ -515,7 +546,7 @@ abstract class ServerBase
      */
     public static function beforeReload(callable $function)
     {
-        self::$beforeReloadCallback = $function;
+        self::$_beforeReloadCallback = $function;
     }
 
     public function daemonize()
@@ -525,17 +556,17 @@ abstract class ServerBase
 
     public function connection_info($fd)
     {
-        return $this->sw->connection_info($fd);
+        return $this->_sw->connection_info($fd);
     }
 
     public function close($client_id)
     {
-        return $this->sw->close($client_id);
+        return $this->_sw->close($client_id);
     }
 
     public function send($client_id, $data)
     {
-        return $this->sw->send($client_id, $data);
+        return $this->_sw->send($client_id, $data);
     }
 
     /**

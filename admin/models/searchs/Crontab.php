@@ -94,7 +94,10 @@ class Crontab extends CrontabModel
                 break;
             }
         }
-        $query->where(['<>', 'a.status', -1]);
+
+        if ($this->status === '' || (is_string($this->status) && trim($this->status) === '')) {
+            $query->where(['<>', 'a.status', -1]);
+        }
 
         // grid filtering conditions
         $query->andFilterWhere([
@@ -104,17 +107,22 @@ class Crontab extends CrontabModel
         ]);
         $joinWith = [];
         if($this->agentId) {
+            /** @see Crontab::getAgents() */
             $joinWith[] = 'agents';
             $query->andWhere('b.bid = :bid OR b.bid IS NULL',[
                 ':bid'=>$this->agentId
             ]);
+
             // 查询出不在这个节点运行的任务，过滤掉
-            $ids = ViaTable::find()->select('aid')->where([
+//            $ids = ViaTable::find()->select('aid')->where([
+//                'bid' => $this->agentId,
+//                'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS,
+//            ])->asArray();
+            $subQuery = ViaTable::find()->select('aid')->where([
                 'bid' => $this->agentId,
                 'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS,
-            ])->asArray();
-            // crontab Id 不在这些Id中
-            $query->andWhere(['NOT IN', 'a.id', $ids]);
+            ]);
+            $query->andWhere(['NOT IN', 'a.id', $subQuery]);
 
             $this->agentInfo = [];
             $rows = Agents::getData();
@@ -130,17 +138,17 @@ class Crontab extends CrontabModel
                 }
             }
         }
+
         if($this->ownerId) {
+            /** @see Crontab::getOwners() */
             $joinWith[] = 'owners';
         }
+
         if($joinWith) {
             $this->isSearched = true;
             $query->select([
-                'DISTINCT(a.id)',
                 'a.*',
             ])->joinWith($joinWith);
-
-            $dataProvider->totalCount = $query->count('DISTINCT a.id');
         }
 
         if ($this->max_process_time) {
@@ -151,6 +159,8 @@ class Crontab extends CrontabModel
             ->andFilterWhere(['like', 'a.rule', $this->rule])
             ->andFilterWhere(['like', 'a.command', $this->command])
             ->andFilterWhere(['like', 'a.run_user', $this->run_user]);
+
+        $dataProvider->totalCount = $query->count();
 
         return $dataProvider;
     }

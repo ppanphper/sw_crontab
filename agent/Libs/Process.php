@@ -14,8 +14,8 @@ use \Swoole\Process as SwooleProcess;
 
 class Process
 {
-    private static $table;
-    static private $column = [
+    private static $_table;
+    private static $_column = [
         'taskId' => [SwooleTable::TYPE_INT, 8],
         'runId'  => [SwooleTable::TYPE_INT, 8],
         'sec'    => [SwooleTable::TYPE_INT, 8],
@@ -26,20 +26,21 @@ class Process
     const PROCESS_START = 0;//程序开始运行
     const PROCESS_STOP = 1;//程序结束运行
 
-    public $task;
-    static public $process_list = [];
-    private static $process_stdout = [];
-    private static $max_stdout = 60000;
+    private static $_processList = [];
+    private static $_processStdOut = [];
+    private static $_maxStdOut = 60000;
     // 输出写入按运行Id生成的日志文件
-    private static $process_logWriteFile = [];
+    private static $_processLogWriteFile = [];
+
+    public $task;
 
     public static function init()
     {
-        self::$table = new SwooleTable(PROCESS_MAX_SIZE);
-        foreach (self::$column as $key => $v) {
-            self::$table->column($key, $v[0], $v[1]);
+        self::$_table = new SwooleTable(PROCESS_MAX_SIZE);
+        foreach (self::$_column as $key => $v) {
+            self::$_table->column($key, $v[0], $v[1]);
         }
-        self::$table->create();
+        self::$_table->create();
     }
 
     /**
@@ -55,9 +56,9 @@ class Process
             //必须为false，非阻塞模式
             while ($ret = SwooleProcess::wait(false)) {
                 $pid = $ret['pid'];
-                if ($processTask = self::$table->get($pid)) {
+                if ($processTask = self::$_table->get($pid)) {
                     $processTask['end'] = microtime(true);
-                    $processTask['stdout'] = isset(self::$process_stdout[$pid]) ? self::$process_stdout[$pid] : "";
+                    $processTask['stdout'] = isset(self::$_processStdOut[$pid]) ? self::$_processStdOut[$pid] : "";
 
                     $metric = Constants::MONITOR_KEY_EXEC_SUCCESS;
                     $code = Constants::CUSTOM_CODE_END_RUN;
@@ -83,7 +84,7 @@ class Process
                     }
                     // 关闭管道监听
                     swoole_event_del($processTask['pipe']);
-                    self::$table->del($pid);
+                    self::$_table->del($pid);
 
                     $consumeTime = $processTask['end'] - $processTask['start'];
 
@@ -159,8 +160,8 @@ class Process
                     Report::monitor($metric . '.' . $processTask['taskId']);
                 }
                 // 关闭创建的好的管道
-                self::$process_list[$pid]->close();
-                unset(self::$process_list[$pid], self::$process_stdout[$pid], self::$process_logWriteFile[$pid]);
+                self::$_processList[$pid]->close();
+                unset(self::$_processList[$pid], self::$_processStdOut[$pid], self::$_processLogWriteFile[$pid]);
             }
 
         });
@@ -204,19 +205,19 @@ class Process
         }
 
         swoole_event_add($process->pipe, function ($pipe) use ($pid) {
-            !isset(self::$process_stdout[$pid]) && self::$process_stdout[$pid] = "";
+            !isset(self::$_processStdOut[$pid]) && self::$_processStdOut[$pid] = "";
             // 默认每次读取8192字节
-            $tmp = self::$process_list[$pid]->read();
+            $tmp = self::$_processList[$pid]->read();
             if ($tmp) {
-                $len = mb_strlen(self::$process_stdout[$pid]);
+                $len = mb_strlen(self::$_processStdOut[$pid]);
                 // 如果一次性读取超过了最大长度，就截取
-                if (($length = (self::$max_stdout - $len)) > 0 && $tmp) {
-                    self::$process_stdout[$pid] .= mb_substr($tmp, 0, $length);
+                if (($length = (self::$_maxStdOut - $len)) > 0) {
+                    self::$_processStdOut[$pid] .= mb_substr($tmp, 0, $length);
                 }
 
                 // 是否按运行Id生成日志文件并记录输出
-                if (isset(self::$process_logWriteFile[$pid])) {
-                    $task = self::$process_logWriteFile[$pid];
+                if (isset(self::$_processLogWriteFile[$pid])) {
+                    $task = self::$_processLogWriteFile[$pid];
                     $logPath = date('Y-m-d', $task['sec']) . DIRECTORY_SEPARATOR . $task['taskId'];
                     Log::createLogDir($logPath);
                     $logFilePath = Log::getLogFilePath($task['runId'], $logPath);
@@ -233,7 +234,7 @@ class Process
             }
         });
 
-        self::$table->set($pid, [
+        self::$_table->set($pid, [
             'taskId' => $task['taskId'],
             'runId'  => $task['runId'],
             'sec'    => $task['sec'],
@@ -243,14 +244,14 @@ class Process
 
         // 是否记录输出到日志文件
         if ($task['logOpt'] == Constants::LOG_OPT_WRITE_FILE) {
-            self::$process_logWriteFile[$pid] = [
+            self::$_processLogWriteFile[$pid] = [
                 'taskId' => $task['taskId'],
                 'runId'  => $task['runId'],
                 'sec'    => $task['sec'],
             ];
         }
 
-        self::$process_list[$pid] = $process;
+        self::$_processList[$pid] = $process;
 
         // 上报监控系统创建进程成功
         Report::monitor(Constants::MONITOR_KEY_CREATE_PROCESS_SUCCESS . '.' . $task['taskId']);
@@ -281,31 +282,13 @@ class Process
      */
     public function exec(SwooleProcess $process)
     {
-        if (self::$process_list) {
-            foreach (self::$process_list as $p) {
+        if (self::$_processList) {
+            foreach (self::$_processList as $p) {
                 $p->close();
             }
         }
-        self::$process_list = [];
+        self::$_processList = [];
         $command = $this->task['command'];
-//        $pattern = Constants::CMD_PARSE_PATTERN;
-//        preg_match_all($pattern, $command, $matches);
-//        if (empty($matches[1]) || empty($matches[1][0])) {
-//            $msg = '解析结果: ' . var_export($matches, true);
-//            // 上报监控系统解析命令失败
-//            Report::monitor(Constants::MONITOR_KEY_CMD_PARSE_FAILED . '.' . $this->task['taskId']);
-//            DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CMD_PARSE_FAILED, '命令解析失败', $msg);
-//            exit(Constants::EXIT_CODE_CMD_PARSE_FAILED);
-//        }
-//        $execFile = $matches[1][0];
-//        $args = [];
-//        if (count($matches[1]) > 1) {
-//            $args = array_slice($matches[1], 1);
-//            foreach ($args as &$val) {
-//                // 去除双引号、单引号
-//                $val = trim($val, '"\'');
-//            }
-//        }
         if ($this->task['runUser'] && !self::changeUser($this->task['runUser'])) {
             $msg = 'RunUser: ' . $this->task['runUser'];
             // 上报监控系统变更运行时用户失败
@@ -339,7 +322,7 @@ class Process
 
         // 上报监控系统创建进程失败
         Report::monitor(Constants::MONITOR_KEY_CHILD_PROCESS_STARTS_RUN . '.' . $this->task['taskId']);
-        DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '任务开始执行');
+        DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '任务开始执行', $this->task['command']);
 
         logInfo('任务开始执行' . (!empty($this->task['retries']) ? '(第' . $this->task['retries'] . '次重试)' : '') . ': Id = ' . $this->task['taskId'] . '; runId = ' . $this->task['runId'] . '; command = ' . $this->task['command']);
         if (isWindowsOS()) {
@@ -381,6 +364,6 @@ class Process
      */
     public static function getTable()
     {
-        return self::$table;
+        return self::$_table;
     }
 }

@@ -23,7 +23,7 @@ class Tasks
      * TYPE_INT 8(Mysql BIGINT): 2 ^ (8 * 8) = -9223372036854775808 ~ 9223372036854775807
      * @var array
      */
-    private static $column = [
+    private static $_column = [
         'minute'    => [SwooleTable::TYPE_INT, 8], // 分钟
         'sec'       => [SwooleTable::TYPE_INT, 8], // 哪一秒执行
         'taskId'    => [SwooleTable::TYPE_INT, 8], // crontab Id
@@ -39,7 +39,7 @@ class Tasks
     public static function init()
     {
         self::$table = new SwooleTable(TASKS_MAX_CONCURRENT_SIZE);
-        foreach (self::$column as $key => $v) {
+        foreach (self::$_column as $key => $v) {
             self::$table->column($key, $v[0], $v[1]);
         }
         self::$table->create();

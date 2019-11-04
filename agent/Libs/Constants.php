@@ -42,6 +42,7 @@ class Constants
     /**
      * 数据库中的agent数据如果有变更，把这个md5值也一起改变
      * agent发现有值，就重新加载DB数据，并删除对应的Key
+     * key prefix:IP_PORT
      */
     const REDIS_KEY_AGENT_CHANGE_MD5 = 'agent_change_md5:';
 
