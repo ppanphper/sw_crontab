@@ -31,7 +31,7 @@ class RedisClient
      * @static
      * @var    array
      */
-    protected static $_default_config = array(
+    protected static $_defaultConfig = array(
         'socket_type'      => 'tcp',
         'host'             => '127.0.0.1',
         'password'         => NULL,
@@ -149,7 +149,7 @@ class RedisClient
      * 是否使用的是PHPRedis扩展
      * @var bool
      */
-    protected $_is_phpRedis = true;
+    protected $_isPhpRedis = true;
 
     // ------------------------------------------------------------------------
 
@@ -164,7 +164,7 @@ class RedisClient
     {
         // 加载配置
         if (!empty($config)) {
-            self::$_config = array_merge(self::$_default_config, $config);
+            self::$_config = array_merge(self::$_defaultConfig, $config);
         }
 
         // 没有配置就禁用Redis
@@ -179,8 +179,8 @@ class RedisClient
         }
 
         // 如果是PHPRedis 或者 PHPRedis集群
-        $this->_is_phpRedis = in_array(self::$_config['client_type'], [self::CLIENT_TYPE_PHP_REDIS, self::CLIENT_TYPE_PHP_REDIS_CLUSTER], true);
-        if ($this->_is_phpRedis) {
+        $this->_isPhpRedis = in_array(self::$_config['client_type'], [self::CLIENT_TYPE_PHP_REDIS, self::CLIENT_TYPE_PHP_REDIS_CLUSTER], true);
+        if ($this->_isPhpRedis) {
             // 是否支持Redis
             if (!$this->is_supported()) {
                 throw new Exception("Redis class is not exists,Please make sure is installed!");
@@ -377,7 +377,7 @@ class RedisClient
     public function evalScript($scriptKey, $keys, $args = [])
     {
         // 如果不是用PHPRedis扩展
-        if (!$this->_is_phpRedis) {
+        if (!$this->_isPhpRedis) {
             // 如果是incr，就用另外的方式实现
             if ($scriptKey == 'incr') {
                 return $this->setExpireIncr($keys, $args);

@@ -50,8 +50,10 @@ return [
     'task_max_load_size'         => 8192,
     // 最大进程数，"任务进程内存"表最大行数
     'process_max_size'           => 1024,
-    // 同时运行任务最大数量, "任务内存"表最大行数
-    'task_max_concurrent_size'   => 1024,
+    // 一分钟内运行任务最大数量, "任务内存"表最大行数
+    'task_max_concurrent_size'   => 8192,
+    // 日志临时存储最大条数
+    'log_temp_store_max_size'    => 16384,
 
     // 10分钟重新加载一次任务到内存表
     'task_reload_interval'       => 600,

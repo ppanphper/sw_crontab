@@ -18,8 +18,6 @@ class DbLog
      * @var LogChannel
      */
     protected static $_logChannel = null;
-    // 日志聚合，把所有日志聚合成一条，最后一条标识完结则存储到库中
-    protected static $logs = [];
 
     /**
      * 写入db日志最大重试次数
@@ -28,7 +26,7 @@ class DbLog
      */
     protected static $_retryMaxNum = 3;
 
-    public static $table;
+    protected static $_table;
 
     /**
      * TYPE_INT 1(Mysql TINYINT): 2 ^ 8 = -128 ~ 127
@@ -37,7 +35,7 @@ class DbLog
      * TYPE_INT 8(Mysql BIGINT): 2 ^ (8 * 8) = -9223372036854775808 ~ 9223372036854775807
      * @var array
      */
-    private static $column = [
+    private static $_column = [
         'msg' => [SwooleTable::TYPE_STRING, 65535],
     ];
 
@@ -52,11 +50,11 @@ class DbLog
         self::$_retryMaxNum = configItem('flush_db_log_max_retry_num', 3);
 
         /** 用来存储日志内容 */
-        self::$table = new SwooleTable(TASK_MAX_LOAD_SIZE);
-        foreach (self::$column as $key => $v) {
-            self::$table->column($key, $v[0], $v[1]);
+        self::$_table = new SwooleTable(LOG_TEMP_STORE_MAX_SIZE);
+        foreach (self::$_column as $key => $v) {
+            self::$_table->column($key, $v[0], $v[1]);
         }
-        self::$table->create();
+        self::$_table->create();
         /** End */
 
         // 请求完结的时候把日志Flush进文件
@@ -149,7 +147,7 @@ class DbLog
                     if ($originLog !== false) {
                         // key = 任务Id + 运行Id + 第几次重试
                         $key = self::getMemoryTableKey($originLog['taskId'], $originLog['runId'], $originLog['retries']);
-                        $msg = self::$table->get($key, 'msg');
+                        $msg = self::$_table->get($key, 'msg');
                         if ($msg === false) {
                             $msg = '';
                         }
@@ -160,7 +158,7 @@ class DbLog
                                 $msg .= $originLog['msg'] . PHP_EOL;
                             }
                             // 暂存日志内容
-                            self::$table->set($key, ['msg' => $msg]);
+                            self::$_table->set($key, ['msg' => $msg]);
                         }
                         // 如果不是最后一条日志，就跳过
                         if (!isset($originLog['end']) || !$originLog['end']) {
@@ -168,7 +166,7 @@ class DbLog
                         }
                         // 删除并发日志
                         if ($originLog['code'] == Constants::CUSTOM_CODE_CONCURRENCY_LIMIT) {
-                            self::$table->del($key);
+                            self::$_table->del($key);
                             continue;
                         }
                         // 存储日志
@@ -190,12 +188,12 @@ class DbLog
                                 self::$_logChannel->push($originLog);
                             } else {
                                 // 入库失败重试次数达到阀值就删除掉
-                                self::$table->del($key);
+                                self::$_table->del($key);
                                 logWarning($logPrefix . json_encode($originLog, JSON_UNESCAPED_UNICODE));
                             }
                         } else {
                             // 入库后就删除掉
-                            self::$table->del($key);
+                            self::$_table->del($key);
                         }
                     }
                 }

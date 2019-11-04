@@ -2,7 +2,6 @@
 
 namespace Libs;
 
-use \Models\DB;
 use \Swoole\Server as SwooleServer;
 use \Swoole\Process as SwooleProcess;
 
@@ -33,16 +32,35 @@ class Server extends ServerBase
      */
     public $_initTaskMaps = [];
 
-    protected $pid_file;
     // 状态进程Pid文件
     public static $statsPidFile;
 
     // 接收数据处理方法映射数组
-    protected $receiveModeProcessMaps = array(
+    protected $_receiveModeProcessMaps = array(
         Constants::SW_CONTROL_CMD => 'controlCommand',
         Constants::SW_API_CMD     => 'apiCommand',
     );
 
+    protected static $_defaultOptions = [
+        'd|daemon'  => '启用守护进程模式',
+        'h|host?'   => '指定监听地址',
+        'p|port?'   => '指定监听端口',
+        'help'      => '显示帮助界面',
+//        'b|base'    => '使用BASE模式启动',
+//		'w|worker?' => '设置Worker进程的数量',
+        'r|thread?' => '设置Reactor线程的数量',
+//		't|tasker?' => '设置Task进程的数量',
+    ];
+
+    /**
+     * SwooleServer constructor.
+     *
+     * @param string $host
+     * @param int $port
+     * @param bool $ssl 是否开启安全加密
+     *
+     * @throws \Exception
+     */
     public function __construct($host, $port = 0, $ssl = false)
     {
         parent::__construct($host, $port, $ssl);
@@ -117,6 +135,9 @@ class Server extends ServerBase
                     exit("Server is not running\n");
                 }
                 $pid = file_get_contents(self::$statsPidFile);
+                /**
+                 * @see Server::initServer()
+                 */
                 posix_kill($pid, SIGUSR1);
                 exit(0);
             }
@@ -138,28 +159,24 @@ class Server extends ServerBase
         if (self::$pidFile) {
             $this->_config['pid_file'] = self::$pidFile;
         }
-        if (!empty(self::$options['daemon'])) {
+        if (!empty(self::$_options['daemon'])) {
             $this->_config['daemonize'] = true;
         }
 
-        if (!empty(self::$options['thread'])) {
-            $this->_config['reator_num'] = intval(self::$options['thread']);
-        }
-
-        $this->sw->on('Start', [$this, 'onMasterStart']);
-        $this->sw->on('ManagerStart', [$this, 'onManagerStart']);
-        $this->sw->on('Shutdown', [$this, 'onShutdown']);
-        $this->sw->on('ManagerStop', [$this, 'onManagerStop']);
-        $this->sw->on('WorkerStart', [$this, 'onWorkerStart']);
-        $this->sw->on('Connect', [$this, 'onConnect']);
-        $this->sw->on('Receive', [$this, 'onReceive']);
-        $this->sw->on('PipeMessage', [$this, 'onPipeMessage']);
-        $this->sw->on('Close', [$this, 'onClose']);
-        $this->sw->on('WorkerStop', [$this, 'onWorkerStop']);
+        $this->_sw->on('Start', [$this, 'onMasterStart']);
+        $this->_sw->on('ManagerStart', [$this, 'onManagerStart']);
+        $this->_sw->on('Shutdown', [$this, 'onShutdown']);
+        $this->_sw->on('ManagerStop', [$this, 'onManagerStop']);
+        $this->_sw->on('WorkerStart', [$this, 'onWorkerStart']);
+        $this->_sw->on('Connect', [$this, 'onConnect']);
+        $this->_sw->on('Receive', [$this, 'onReceive']);
+        $this->_sw->on('PipeMessage', [$this, 'onPipeMessage']);
+        $this->_sw->on('Close', [$this, 'onClose']);
+        $this->_sw->on('WorkerStop', [$this, 'onWorkerStop']);
 
         if (is_callable([$this, 'onTask'])) {
-            $this->sw->on('Task', [$this, 'onTask']);
-            $this->sw->on('Finish', [$this, 'onFinish']);
+            $this->_sw->on('Task', [$this, 'onTask']);
+            $this->_sw->on('Finish', [$this, 'onFinish']);
         }
 
         parent::run();
@@ -172,39 +189,36 @@ class Server extends ServerBase
      */
     protected function initServer()
     {
-        DB::init();// 数据库实例初始化
-        LoadTasks::init();// 载入crontab表符合条件的记录
-        Donkeyid::init();//初始化donkeyid对象
-        Process::init();//载入任务进程处理表，目前有哪些进程在执行任务
-        Tasks::init();// 载入任务表，当前这一分钟要执行的任务
+        LoadTasks::init(); // 载入crontab表符合条件的记录
+        Donkeyid::init(); // 初始化donkeyid对象
+        Process::init(); //载入任务进程处理表，目前有哪些进程在执行任务
+        Tasks::init(); // 载入任务表，当前这一分钟要执行的任务
 
-        Report::init();
+        // 新增监控告警进程
+        Report::init(); // 告警模块
         $monitorAlarmProcessNum = configItem('monitor_alarm_process_num', 1);
         for ($i = 0; $i < $monitorAlarmProcessNum; $i++) {
-            $this->sw->addProcess(new SwooleProcess(function ($process) use ($i) {
+            $this->_sw->addProcess(new SwooleProcess(function ($process) use ($i) {
                 $this->setProcessName('monitorAlarm|' . $i, null, $process);
-//                $process->name($this->_serverName . '|monitorAlarm|' . $i);
                 Report::monitorAlarm();
             }));
         }
-        /** End */
 
-        /**
-         * DB日志进程，异步刷日志到数据库
-         */
+        // DB日志进程，异步刷日志到数据库
         DbLog::init();
-        $this->sw->addProcess(new SwooleProcess(function ($process) {
+        $this->_sw->addProcess(new SwooleProcess(function ($process) {
             $this->setProcessName('logFlushToDB', null, $process);
-//            $process->name($this->_serverName . '|logFlushToDB');
             DbLog::flush();
         }));
-        /** End */
 
+        // 如果配置了主进程PID文件路径，就把主进程PID写入文件，以供调用
         if (self::$statsPidFile) {
-            $this->sw->addProcess(new SwooleProcess(function ($process) {
+            $this->_sw->addProcess(new SwooleProcess(function ($process) {
                 $this->setProcessName('listenPipeProcess', null, $process);
-//                $process->name($this->_serverName . '|listenPipeProcess');
+                // 把pid写入文件，给其它地方使用
                 file_put_contents(self::$statsPidFile, $process->pid);
+
+                // 捕获用户自定义信号，用来打印当前状态信息
                 SwooleProcess::signal(SIGUSR1, function ($sig) {
                     $tasks = LoadTasks::getTable();
                     $content = 'The node has no tasks' . PHP_EOL;
@@ -217,8 +231,9 @@ class Server extends ServerBase
 
                     // 当前待执行的任务表
                     $tasks = Tasks::$table;
-                    if (count($tasks) > 0) {
-                        $content .= 'Task to be performed:' . PHP_EOL;
+                    $taskCount = count($tasks);
+                    if ($taskCount > 0) {
+                        $content .= 'Task to be performed:' . $taskCount . PHP_EOL;
                         foreach ($tasks as $task) {
                             $content .= 'taskId = ' . $task['taskId'] . '; exec time = ' . date('Y-m-d H:i:s', $task['sec']) . '; retries = ' . $task['retries'] . PHP_EOL;
                         }
@@ -231,7 +246,7 @@ class Server extends ServerBase
         parent::initServer();
 
         // 连接中心服注册服务
-        $this->sw->addProcess(new SwooleProcess([$this, 'register']));
+        $this->_sw->addProcess(new SwooleProcess([$this, 'register']));
     }
 
 
@@ -242,13 +257,13 @@ class Server extends ServerBase
      */
     public function onMasterStart(SwooleServer $server)
     {
-        $this->setProcessName(': master -host=' . $this->host . ' -port=' . $this->port, '');
+        $this->setProcessName(': master -host=' . $this->_host . ' -port=' . $this->_port, '');
         $this->formatOutput("Master PID = {$server->master_pid}");
         $this->formatOutput("Manager PID = {$server->manager_pid}");
         $this->formatOutput("Swoole Version = [" . SWOOLE_VERSION . "]");
         $this->formatOutput("Server IP = " . SERVER_INTERNAL_IP);
-        $this->formatOutput("Listen IP = {$this->host}");
-        $this->formatOutput("Listen Port = {$this->port}");
+        $this->formatOutput("Listen IP = {$this->_host}");
+        $this->formatOutput("Listen Port = {$this->_port}");
         $this->formatOutput("Worker Number = {$server->setting['worker_num']}");
         $this->formatOutput("Task Number = {$server->setting['task_worker_num']}");
     }
@@ -322,7 +337,7 @@ class Server extends ServerBase
                         $msg = '第' . $item['currentRetries'] . '次重试' . PHP_EOL . $msg;
                     }
 
-                    //正在运行标示
+                    // 正在运行标示
                     if (Tasks::$table->exist($runId)) {
                         Tasks::$table->set($runId, [
                             'runStatus' => LoadTasks::RUN_STATUS_START,
@@ -397,10 +412,10 @@ class Server extends ServerBase
         ];
 
         // 是否有消息类型处理方法
-        if (isset($this->receiveModeProcessMaps[$data['type']])) {
+        if (isset($this->_receiveModeProcessMaps[$data['type']])) {
             call_user_func_array([
                 $this,
-                $this->receiveModeProcessMaps[$data['type']]
+                $this->_receiveModeProcessMaps[$data['type']]
             ], [$server, $task, $data]);
         } else {
             $pack = Packet::packFormat("unknown task type", Constants::STATUS_CODE_UNKNOW_TASK_TYPE);
@@ -521,12 +536,12 @@ class Server extends ServerBase
     public function send($client_id, $data)
     {
         $data = Packet::packEncode($data);
-        return $this->sw->send($client_id, $data);
+        return $this->_sw->send($client_id, $data);
     }
 
     public function __call($func, $params)
     {
-        return call_user_func_array([$this->sw, $func], $params);
+        return call_user_func_array([$this->_sw, $func], $params);
     }
 
     public function onShutdown(SwooleServer $server)

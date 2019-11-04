@@ -15,12 +15,12 @@ use \Swoole\Lock as SwooleLock;
  */
 class Donkeyid
 {
-    static $donkeyid;
+    public static $donkeyid;
 
-    private $node_id;
-    private $epoch;
-    private $table;
-    private $lock;
+    private $_node_id;
+    private $_epoch;
+    private $_table;
+    private $_lock;
 
     const snowflake = 0;
     const TIMESTAMP_BITS = 42;
@@ -44,8 +44,8 @@ class Donkeyid
         if ($epoch === false) {
             $epoch = ini_get("donkeyid.epoch");
         }
-        $this->node_id = ($node_id == false || $node_id < 0) ? 0 : $node_id;
-        $this->epoch = ($epoch == false || $epoch < 0) ? 0 : $epoch;
+        $this->_node_id = ($node_id == false || $node_id < 0) ? 0 : $node_id;
+        $this->_epoch = ($epoch == false || $epoch < 0) ? 0 : $epoch;
         $this->create_table();
     }
 
@@ -69,11 +69,11 @@ class Donkeyid
      */
     private function create_table()
     {
-        $this->table = new SwooleTable(3);
-        $this->table->column("last_timestamp", \swoole_table::TYPE_INT, 8);
-        $this->table->column("sequence", \swoole_table::TYPE_INT, 4);
-        $this->table->create();
-        $this->lock = new SwooleLock(SWOOLE_SPINLOCK);
+        $this->_table = new SwooleTable(3);
+        $this->_table->column("last_timestamp", \swoole_table::TYPE_INT, 8);
+        $this->_table->column("sequence", \swoole_table::TYPE_INT, 4);
+        $this->_table->create();
+        $this->_lock = new SwooleLock(SWOOLE_SPINLOCK);
     }
 
     /**
@@ -105,9 +105,9 @@ class Donkeyid
         $isMacOS = isMacOS();
         // MacOS Mojave使用锁会异常退出
         if (!$isMacOS) {
-            $this->lock->lock();
+            $this->_lock->lock();
         }
-        $col = $this->table->get(self::snowflake);
+        $col = $this->_table->get(self::snowflake);
         if ($col == false || $col["last_timestamp"] > $now) {
             $last_timestamp = $now;
             $sequence = mt_rand(0, 10) % 2;
@@ -121,13 +121,13 @@ class Donkeyid
                 $now = $this->wait_next_ms();
             }
         }
-        $this->table->set(self::snowflake, array("last_timestamp" => $now, "sequence" => $sequence));
+        $this->_table->set(self::snowflake, array("last_timestamp" => $now, "sequence" => $sequence));
         // MacOS Mojave使用锁会异常退出
         if (!$isMacOS) {
-            $this->lock->unlock();
+            $this->_lock->unlock();
         }
-        $id = (($now - ($this->epoch * 1000) & (-1 ^ (-1 << self::TIMESTAMP_BITS))) << self::TIMESTAMP_LEFT_SHIFT)
-            | (($this->node_id & (-1 ^ (-1 << self::NODE_ID_BITS))) << self::NODE_ID_LEFT_SHIFT)
+        $id = (($now - ($this->_epoch * 1000) & (-1 ^ (-1 << self::TIMESTAMP_BITS))) << self::TIMESTAMP_LEFT_SHIFT)
+            | (($this->_node_id & (-1 ^ (-1 << self::NODE_ID_BITS))) << self::NODE_ID_LEFT_SHIFT)
             | ($sequence);
         return $id;
     }
@@ -141,9 +141,10 @@ class Donkeyid
      */
     public function dk_parse_id($id)
     {
-        $ret["time"] = ($id >> self::TIMESTAMP_LEFT_SHIFT) + ($this->epoch * 1000);
-        $ret["node_id"] = ($id >> self::NODE_ID_LEFT_SHIFT) & (-1 ^ (-1 << self::NODE_ID_BITS));
-        $ret["sequence"] = $id & (-1 ^ (-1 << self::SEQUENCE_BITS));
-        return $ret;
+        return [
+            'time' => ($id >> self::TIMESTAMP_LEFT_SHIFT) + ($this->_epoch * 1000),
+            'node_id' => ($id >> self::NODE_ID_LEFT_SHIFT) & (-1 ^ (-1 << self::NODE_ID_BITS)),
+            'sequence' => $id & (-1 ^ (-1 << self::SEQUENCE_BITS))
+        ];
     }
 }

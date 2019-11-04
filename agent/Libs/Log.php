@@ -5,18 +5,18 @@ namespace Libs;
 class Log
 {
 
-    protected static $_log_path;
+    protected static $_logPath;
     /**
      * 日志文件名前缀
      * @var
      */
     protected static $_logNamePrefix = '';
-    protected static $_date_fmt = 'Y-m-d H:i:s.u';
+    protected static $_dateFmt = 'Y-m-d H:i:s.u';
     /**
      * 日期格式化函数
      * @var string
      */
-    protected static $_date_format_callable = 'date';
+    protected static $_dateFormatCallable = 'date';
     protected static $_enabled = TRUE;
     /**
      * 当前变量内日志记录的数量
@@ -56,14 +56,14 @@ class Log
      * 是否记录所有级别日志
      * @var bool
      */
-    protected static $_record_all_levels = false;
+    protected static $_recordAllLevels = false;
 
     /**
      * @var LogChannel
      */
     protected static $_logChannel = null;
 
-    protected static $fp = null;
+    protected static $_fp = null;
 
     protected static $_mode = 0664;
 
@@ -77,8 +77,8 @@ class Log
         $defaultLogPath = ROOT_PATH . 'Logs' . DIRECTORY_SEPARATOR;
 
         // 默认日志都写在此目录
-        self::$_log_path = !empty($config['path']) ? $config['path'] : $defaultLogPath;
-        self::$_log_path = rtrim(self::$_log_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        self::$_logPath = !empty($config['path']) ? $config['path'] : $defaultLogPath;
+        self::$_logPath = rtrim(self::$_logPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
         if (!empty($config['prefix']) && is_string($config['prefix'])) {
             self::$_logNamePrefix = $config['prefix'];
@@ -88,11 +88,11 @@ class Log
             self::$_mode = $config['mode'];
         }
 
-        if (!is_dir(self::$_log_path)) {
-            createDir(self::$_log_path);
+        if (!is_dir(self::$_logPath)) {
+            createDir(self::$_logPath);
         }
 
-        if (!is_writable(self::$_log_path)) {
+        if (!is_writable(self::$_logPath)) {
             self::$_enabled = FALSE;
         }
 
@@ -115,9 +115,9 @@ class Log
         }
 
         if ($config['date_format'] != '') {
-            self::$_date_fmt = $config['date_format'];
-            if (preg_match('#(?<!\\\\)u#', self::$_date_fmt)) {
-                self::$_date_format_callable = [__CLASS__, 'uDate'];
+            self::$_dateFmt = $config['date_format'];
+            if (preg_match('#(?<!\\\\)u#', self::$_dateFmt)) {
+                self::$_dateFormatCallable = [__CLASS__, 'uDate'];
             }
         }
 
@@ -127,7 +127,7 @@ class Log
         }
 
         // 是否记录所有级别日志
-        self::$_record_all_levels = (array_search('All', self::$_levels) !== FALSE) ? TRUE : FALSE;
+        self::$_recordAllLevels = (array_search('All', self::$_levels) !== FALSE) ? TRUE : FALSE;
 
         self::$_logChannel = LogChannel::getInstance();
 
@@ -155,7 +155,7 @@ class Log
 
         $level = ucfirst(strtolower($level));
         // 过滤
-        if (self::$_record_all_levels === FALSE && !in_array($level, self::$_levels)) {
+        if (self::$_recordAllLevels === FALSE && !in_array($level, self::$_levels)) {
             return true;
         }
 
@@ -193,11 +193,11 @@ class Log
         $logCount = 0;
         $startTime = microtime(true);
         $fileName = self::getFileName();
-        if (!is_resource(self::$fp)) {
+        if (!is_resource(self::$_fp)) {
             $filePath = self::getLogFilePath();
-            // self::$fp = self::getMmapFileHandle($filePath);
-            self::$fp = fopen($filePath, 'ab');
-            if (empty(self::$fp)) {
+            // self::$_fp = self::getMmapFileHandle($filePath);
+            self::$_fp = fopen($filePath, 'ab');
+            if (empty(self::$_fp)) {
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
@@ -206,7 +206,7 @@ class Log
 
         while (true) {
             if ($logCount >= self::$_autoFlush || ($logCount > 0 && self::$_timerFFlush && (microtime(true) - $startTime) > self::$_timerFFlush)) {
-                $boolean = fflush(self::$fp);
+                $boolean = fflush(self::$_fp);
                 // 写入成功才把记录数清零
                 $boolean && $logCount = 0;
                 $startTime = microtime(true);
@@ -220,20 +220,20 @@ class Log
                         // 判断日志是否隔天了
                         if (self::getFileName($log['fn']) !== $fileName) {
                             // 关闭内存映射，底层会自动执行fflush将数据同步到磁盘文件
-                            fclose(self::$fp);
+                            fclose(self::$_fp);
                             // 设置新的日志文件名称，用来判断
                             $fileName = self::getFileName($log['fn']);
                             // 获取新的日志文件路径
                             $filePath = self::getLogFilePath($log['fn']);
-                            self::$fp = fopen($filePath, 'ab');
-                            if (empty(self::$fp)) {
+                            self::$_fp = fopen($filePath, 'ab');
+                            if (empty(self::$_fp)) {
                                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                                 return FALSE;
                             }
                             @chmod($filePath, self::$_mode);
                         }
 
-                        fwrite(self::$fp, $message);
+                        fwrite(self::$_fp, $message);
                         $logCount++;
                         continue;
                     }
@@ -249,18 +249,18 @@ class Log
             return FALSE;
         }
 
-        if (!is_resource(self::$fp)) {
+        if (!is_resource(self::$_fp)) {
             $filePath = self::getLogFilePath();
-            self::$fp = fopen($filePath, 'ab');
-            if (empty(self::$fp)) {
+            self::$_fp = fopen($filePath, 'ab');
+            if (empty(self::$_fp)) {
                 echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                 return FALSE;
             }
             @chmod($filePath, self::$_mode);
         }
 
-        if (is_resource(self::$fp)) {
-            fflush(self::$fp);
+        if (is_resource(self::$_fp)) {
+            fflush(self::$_fp);
         }
 
         $fileName = self::getFileName();
@@ -275,13 +275,13 @@ class Log
                     // 判断日志是否隔天了
                     if (self::getFileName($log['fn']) !== $fileName) {
                         // 关闭内存映射，底层会自动执行fflush将数据同步到磁盘文件
-                        fclose(self::$fp);
+                        fclose(self::$_fp);
                         // 设置新的日志文件名称，用来判断
                         $fileName = self::getFileName($log['fn']);
                         // 获取新的日志文件路径
                         $filePath = self::getLogFilePath($log['fn']);
-                        self::$fp = fopen($filePath, 'ab');
-                        if (empty(self::$fp)) {
+                        self::$_fp = fopen($filePath, 'ab');
+                        if (empty(self::$_fp)) {
                             echo self::formatLogMessage(__METHOD__ . ' 打开日志文件失败', 'Core Error');
                             return FALSE;
                         }
@@ -289,17 +289,17 @@ class Log
                         unset($filePath);
                     }
 
-                    fwrite(self::$fp, $message);
+                    fwrite(self::$_fp, $message);
                     $logCount++;
                 }
 
                 if ($logCount >= self::$_autoFlush) {
-                    fflush(self::$fp);
+                    fflush(self::$_fp);
                     $logCount = 0;
                 }
             }
             // 关闭内存映射，底层会自动执行fflush将数据同步到磁盘文件
-            fclose(self::$fp);
+            fclose(self::$_fp);
         }
     }
 
@@ -323,8 +323,8 @@ class Log
     public static function formatLogMessage($message, $level, $time = null)
     {
         $time ?: $time = microtime(true);
-        $callback = self::$_date_format_callable;
-        $date = $callback(...array(self::$_date_fmt, $time));
+        $callback = self::$_dateFormatCallable;
+        $date = $callback(...array(self::$_dateFmt, $time));
         return '[' . $date . "] [$level] $message" . PHP_EOL;
     }
 
@@ -338,7 +338,7 @@ class Log
      */
     public static function getLogFilePath($suffix = '', $subdirectory = '')
     {
-        $logPath = self::$_log_path;
+        $logPath = self::$_logPath;
         if ($subdirectory) {
             $logPath .= trim($subdirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         }
@@ -427,12 +427,12 @@ class Log
     }
 
     /**
-     * @param string $subdirectory
+     * @param string $subDirectory
      * @param int $mode
      */
-    public static function createLogDir($subdirectory, $mode = 0744)
+    public static function createLogDir($subDirectory, $mode = 0744)
     {
-        $logDir = self::$_log_path . trim($subdirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $logDir = self::$_logPath . trim($subDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         if (!is_dir($logDir)) {
             createDir($logDir, $mode);
         }

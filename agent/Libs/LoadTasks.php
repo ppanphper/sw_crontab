@@ -127,7 +127,6 @@ class LoadTasks
                     break;
                 }
 
-                // 如果内存不够，会出现 Swoole_table::set(): unable to allocate memory
                 self::$_table->set($task['id'], [
                     'name'          => $task['name'],
                     'rule'          => $task['rule'],
