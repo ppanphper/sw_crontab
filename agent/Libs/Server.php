@@ -11,9 +11,6 @@ use \Swoole\Process as SwooleProcess;
  */
 class Server extends ServerBase
 {
-    const WORKER_NUM = 10;
-    const TASK_WORKER_NUM = 5;
-
     /**
      * $worker_id是一个从0 - $worker_num - 1之间的数字，表示这个Worker进程的ID
      * 所以Task进程的Id是taskWorkerId - $worker_num 到 $task_worker_num - 1之间的数字，表示这个Task Worker进程的ID
@@ -53,6 +50,13 @@ class Server extends ServerBase
     ];
 
     /**
+     * worker进程每秒处理任务数量
+     *
+     * @var int
+     */
+    protected static $_workerPerSecondProcessTaskNum = 50;
+
+    /**
      * SwooleServer constructor.
      *
      * @param string $host
@@ -65,8 +69,30 @@ class Server extends ServerBase
     {
         parent::__construct($host, $port, $ssl);
 
-        $this->_config['worker_num'] = self::WORKER_NUM;
-        $this->_config['task_worker_num'] = self::TASK_WORKER_NUM;
+        self::setPidFile(LOGS_PATH . 'agent_' . $this->_port . '.pid');
+        self::setStatsPidFile(LOGS_PATH . 'agent_' . $this->_port . '_stats.pid');
+
+        if (is_file(self::$pidFile)) {
+            $serverPID = file_get_contents(self::$pidFile);
+        } else {
+            $serverPID = 0;
+        }
+
+        call_user_func_array(self::$_startMethodMaps[self::$_options['_method']], [$serverPID, self::$_options]);
+
+        // 必须要大于最基本的Worker进程数量
+        if (!empty(self::$_options['worker_num']) && self::$_options['worker_num'] > self::WORKER_NUM) {
+            $this->_config['worker_num'] = self::$_options['worker_num'];
+        }
+
+        // 必须要大于最基本的Task进程数量
+        if (!empty(self::$_options['task_worker_num']) && self::$_options['task_worker_num'] > self::TASK_WORKER_NUM) {
+            $this->_config['task_worker_num'] = self::$_options['task_worker_num'];
+        }
+
+        if (!empty(self::$_options['reactor_num']) && self::$_options['reactor_num'] > 0) {
+            $this->_config['reactor_num'] = self::$_options['reactor_num'];
+        }
 
         $this->_initTaskMaps = [
             // 加载任务到内存表，相当于crontab表
@@ -105,16 +131,30 @@ class Server extends ServerBase
                     $tasks = Tasks::getTasks();
                     if ($tasks) {
                         /**
-                         * 轮询发送
+                         * 分块轮询发送
                          * 在Task进程内调用sendMessage是阻塞等待的，发送消息完成后返回
                          * task_ipc_mode SW_IPC_UNIXSOCK 使用swSocket_write_blocking方法发送(write fd)
                          * https://github.com/swoole/swoole-src/blob/4d7b6665998a8f58a292149afce0863ba966744c/src/core/socket.c#L175:5
                          * TODO 本身发送很快，但是也有可能会与到极端情况导致超过1秒，导致后续任务不准时
                          */
-                        $server->sendMessage($tasks, $dstWorkerId);
-                        $dstWorkerId++;
-                        if ($dstWorkerId >= $server->setting['worker_num']) {
-                            $dstWorkerId = self::WORKER_EXEC_TASKS;
+                        // 如果超过了每个worker进程的最大处理任务数量，就分块发送到多个worker进程
+                        if (count($tasks) > self::$_workerPerSecondProcessTaskNum) {
+                            $chunks = array_chunk($tasks, self::$_workerPerSecondProcessTaskNum, true);
+                            unset($tasks);
+                            foreach ($chunks as $chunk) {
+                                $server->sendMessage($chunk, $dstWorkerId);
+                                $dstWorkerId++;
+                                if ($dstWorkerId >= $server->setting['worker_num']) {
+                                    $dstWorkerId = self::WORKER_EXEC_TASKS;
+                                }
+                            }
+                        }
+                        else {
+                            $server->sendMessage($tasks, $dstWorkerId);
+                            $dstWorkerId++;
+                            if ($dstWorkerId >= $server->setting['worker_num']) {
+                                $dstWorkerId = self::WORKER_EXEC_TASKS;
+                            }
                         }
                     }
                 });
@@ -129,6 +169,7 @@ class Server extends ServerBase
     public static function init()
     {
         parent::init();
+        // 增加服务状态命令行指令
         self::$_startMethodMaps = array_merge(self::$_startMethodMaps, [
             'stats' => function ($serverPID, $opt) {
                 if (empty($serverPID) || !is_file(self::$statsPidFile)) {
@@ -142,6 +183,8 @@ class Server extends ServerBase
                 exit(0);
             }
         ]);
+        // 不支持平滑重启，因为重启所有的worker进程和task进程会影响任务的执行，导致部分任务未执行。
+        unset(self::$_startMethodMaps['reload']);
     }
 
     /**
@@ -151,7 +194,7 @@ class Server extends ServerBase
      */
     public function run(array $setting = [])
     {
-        //merge config
+        // merge config
         if (!empty($setting)) {
             $this->_config = array_merge($this->_config, $setting);
         }
@@ -159,24 +202,9 @@ class Server extends ServerBase
         if (self::$pidFile) {
             $this->_config['pid_file'] = self::$pidFile;
         }
+
         if (!empty(self::$_options['daemon'])) {
             $this->_config['daemonize'] = true;
-        }
-
-        $this->_sw->on('Start', [$this, 'onMasterStart']);
-        $this->_sw->on('ManagerStart', [$this, 'onManagerStart']);
-        $this->_sw->on('Shutdown', [$this, 'onShutdown']);
-        $this->_sw->on('ManagerStop', [$this, 'onManagerStop']);
-        $this->_sw->on('WorkerStart', [$this, 'onWorkerStart']);
-        $this->_sw->on('Connect', [$this, 'onConnect']);
-        $this->_sw->on('Receive', [$this, 'onReceive']);
-        $this->_sw->on('PipeMessage', [$this, 'onPipeMessage']);
-        $this->_sw->on('Close', [$this, 'onClose']);
-        $this->_sw->on('WorkerStop', [$this, 'onWorkerStop']);
-
-        if (is_callable([$this, 'onTask'])) {
-            $this->_sw->on('Task', [$this, 'onTask']);
-            $this->_sw->on('Finish', [$this, 'onFinish']);
         }
 
         parent::run();
@@ -217,6 +245,7 @@ class Server extends ServerBase
                 $this->setProcessName('listenPipeProcess', null, $process);
                 // 把pid写入文件，给其它地方使用
                 file_put_contents(self::$statsPidFile, $process->pid);
+                $this->formatOutput("Stats PID = {$process->pid}");
 
                 // 捕获用户自定义信号，用来打印当前状态信息
                 SwooleProcess::signal(SIGUSR1, function ($sig) {
@@ -244,6 +273,9 @@ class Server extends ServerBase
         }
 
         parent::initServer();
+
+        // 添加Worker/Task进程监听管道通信。worker/task进程都可能会触发onPipeMessage事件
+        $this->_sw->on('PipeMessage', [$this, 'onPipeMessage']);
 
         // 连接中心服注册服务
         $this->_sw->addProcess(new SwooleProcess([$this, 'register']));
@@ -276,10 +308,12 @@ class Server extends ServerBase
      */
     public function onWorkerStart(SwooleServer $server, $worker_id)
     {
+//        print_r(get_included_files()); //此数组中的文件表示进程启动前就加载了，所以无法reload
+//        die;
         if ($server->taskworker) {
             $this->initTask($server, $worker_id);
+            // 计算进程下标，在映射中查找并执行对应的处理
             $taskId = $worker_id - $server->setting['worker_num'];
-            // 获取当前进程Id
             if (isset($this->_initTaskMaps[$taskId])) {
                 // 执行对应的匿名函数
                 $this->_initTaskMaps[$taskId]($server, $taskId);

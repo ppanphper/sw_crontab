@@ -20,6 +20,9 @@ use \Swoole\Process as SwooleProcess;
  */
 abstract class ServerBase
 {
+    const WORKER_NUM = 10;
+    const TASK_WORKER_NUM = 5;
+
     protected static $_options = array();
     /**
      * SwooleServer对象
@@ -38,7 +41,7 @@ abstract class ServerBase
 
     protected $_port = null;
 
-    protected $_ssl = false;
+    protected $_flag = false;
 
     protected static $_beforeStopCallback;
     protected static $_beforeReloadCallback;
@@ -87,6 +90,10 @@ abstract class ServerBase
         E_RECOVERABLE_ERROR => 'Fatal Error',
     );
 
+    /**
+     * @var array 命令行支持的指令映射
+     * @see ServerBase::init()
+     */
     protected static $_startMethodMaps;
 
     /**
@@ -105,39 +112,21 @@ abstract class ServerBase
             die('请安装Swoole ' . $swooleVersion . ' 以上的版本!');
         }
 
-        $flag = $ssl ? (SWOOLE_SOCK_TCP | SWOOLE_SSL) : SWOOLE_SOCK_TCP;
         if (!empty(self::$_options['base'])) {
             self::$swooleMode = SWOOLE_BASE;
         } elseif (extension_loaded('swoole')) {
             self::$swooleMode = SWOOLE_PROCESS;
         }
 
-        /** 脚本启动参数配置 */
         // 自定义监听地址, 针对多网卡支持
         if (!empty(self::$_options['host'])) {
             $host = intval(self::$_options['host']);
         }
 
-        $opt = [
-            'port' => $port,
-            'worker_num' => 10,
-            'reactor_num' => 0,
-            'task_worker_num' => 4,
-        ];
-        foreach($opt as $key => $val) {
-            // 自定义监听启动端口
-            if (!empty(self::$_options[$key])) {
-                $opt[$key] = intval(self::$_options[$key]);
-            }
-        }
-        /** END */
-
-        $this->_sw = new SwooleServer($host, $opt['port'], self::$swooleMode, $flag);
-
         //store current ip port
-        $this->_host = $this->_sw->host;
-        $this->_port = $this->_sw->port;
-        $this->_ssl = $ssl;
+        $this->_host = $host;
+        $this->_port = !empty(self::$_options['port']) ? intval(self::$_options['port']) : $port;
+        $this->_flag = $ssl ? (SWOOLE_SOCK_TCP | SWOOLE_SSL) : SWOOLE_SOCK_TCP;
 
         // 定义内部IP和端口常量
         !defined('SERVER_INTERNAL_IP') && define('SERVER_INTERNAL_IP', getServerInternalIp());
@@ -168,8 +157,8 @@ abstract class ServerBase
             'heartbeat_idle_time'      => 180, // 3分钟客户端没有发送请求，关闭连接
             'open_cpu_affinity'        => 1,
 
-            'worker_num'      => $opt['worker_num'],
-            'task_worker_num' => $opt['task_worker_num'],
+            'worker_num'      => self::WORKER_NUM,
+            'task_worker_num' => self::TASK_WORKER_NUM,
 
             'max_request'      => 0, //必须设置为0否则并发任务容易丢,don't change this number
             'task_max_request' => 0, // 不退出
@@ -188,10 +177,6 @@ abstract class ServerBase
             'reload_async'     => true,
         ];
 
-        if ($opt['reactor_num'] > 0) {
-            $this->_config['reactor_num'] = $opt['reactor_num'];
-        }
-
         set_error_handler([$this, '_error_handler']);
     }
 
@@ -202,13 +187,13 @@ abstract class ServerBase
     {
         self::$_startMethodMaps = [
             'start'   => function ($serverPID, $opt) {
-                //已存在ServerPID，并且进程存在
+                // 已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     exit("Server is already running.\n");
                 }
             },
             'restart' => function ($serverPID, $opt) {
-                //已存在ServerPID，并且进程存在
+                // 已存在ServerPID，并且进程存在
                 if (!empty($serverPID) and posix_kill($serverPID, 0)) {
                     if (self::$_beforeStopCallback) {
                         call_user_func(self::$_beforeStopCallback, $opt);
@@ -217,6 +202,11 @@ abstract class ServerBase
                     self::formatOutput('Stopped');
                 }
             },
+            /**
+             * 平滑重启
+             *
+             * @see http://wiki.swoole.com/wiki/page/20.html
+             */
             'reload'  => function ($serverPID, $opt) {
                 if (empty($serverPID)) {
                     exit("Server is not running");
@@ -224,7 +214,10 @@ abstract class ServerBase
                 if (self::$_beforeReloadCallback) {
                     call_user_func(self::$_beforeReloadCallback, $opt);
                 }
+                // 向主进程/管理进程发送SIGUSR1信号，将平稳地重启所有Worker进程
                 posix_kill($serverPID, SIGUSR1);
+                // 向主进程/管理进程发送SIGUSR2信号，将平稳地重启所有Task进程
+                posix_kill($serverPID, SIGUSR2);
                 exit(0);
             },
             'stop'    => function ($serverPID, $opt) {
@@ -249,16 +242,6 @@ abstract class ServerBase
      */
     public static function start(callable $startFunction)
     {
-        if (empty(self::$pidFile)) {
-            throw new \Exception("require pidFile.");
-        }
-        $pid_file = self::$pidFile;
-        if (is_file($pid_file)) {
-            $serverPID = file_get_contents($pid_file);
-        } else {
-            $serverPID = 0;
-        }
-
         if (!self::$optionKit) {
             Loader::addNameSpace('GetOptionKit', LIBS_PATH . "GetOptionKit/src/GetOptionKit");
             self::$optionKit = new \GetOptionKit\GetOptionKit;
@@ -274,22 +257,40 @@ abstract class ServerBase
         }
         global $argv;
         $opt = $kit->parse($argv);
-        if (empty($argv[1]) or isset($opt['help']) || !isset(self::$_startMethodMaps[$argv[1]])) {
+        if (empty($argv[1]) || isset($opt['help']) || !isset(self::$_startMethodMaps[$argv[1]])) {
             usage:
             $kit->specs->printOptions("php {$argv[0]} " . implode('|', array_keys(self::$_startMethodMaps)));
             exit(0);
         }
-        call_user_func_array(self::$_startMethodMaps[$argv[1]], [$serverPID, $opt]);
+        $opt['_method'] = $argv[1];
         self::$_options = $opt;
-        self::formatOutput('Starting');
         // 回调闭包启动函数
         $startFunction($opt);
     }
 
+    /**
+     * 服务启动
+     */
     public function run()
     {
+        $this->_sw = new SwooleServer($this->_host, $this->_port, self::$swooleMode, $this->_flag);
         $this->_sw->set($this->_config);
+        $this->_sw->on('Start', [$this, 'onMasterStart']);
+        $this->_sw->on('ManagerStart', [$this, 'onManagerStart']);
+        $this->_sw->on('Shutdown', [$this, 'onShutdown']);
+        $this->_sw->on('ManagerStop', [$this, 'onManagerStop']);
+        $this->_sw->on('WorkerStart', [$this, 'onWorkerStart']);
+        $this->_sw->on('Connect', [$this, 'onConnect']);
+        $this->_sw->on('Receive', [$this, 'onReceive']);
+        $this->_sw->on('Close', [$this, 'onClose']);
+        $this->_sw->on('WorkerStop', [$this, 'onWorkerStop']);
+
+        if (is_callable([$this, 'onTask'])) {
+            $this->_sw->on('Task', [$this, 'onTask']);
+            $this->_sw->on('Finish', [$this, 'onFinish']);
+        }
         $this->initServer();
+        self::formatOutput('Starting');
         $this->_sw->start();
     }
 

@@ -23,7 +23,7 @@ foreach ($keyArray as $key) {
 
 $config = [
     'id'             => 'SWC',
-    'name'           => 'SWC系统',
+    'name'           => '分布式定时任务系统',
     'basePath'       => dirname(__DIR__),
     'bootstrap'      => ['log'],
     // 设置目标语言为简体中文

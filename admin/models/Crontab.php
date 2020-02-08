@@ -148,7 +148,7 @@ class Crontab extends ActiveRecord
             'update_time'      => Yii::t('app', 'Update Time'),
             'ownerId'      => Yii::t('app', 'Owner'),
             'agentId'      => Yii::t('app', 'Agents'),
-            'notInAgentId' => Yii::t('app', 'Not running on these nodes'),
+            'notInAgentId' => Yii::t('app', 'Filter nodes'),
         ];
     }
 

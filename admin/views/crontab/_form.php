@@ -474,7 +474,7 @@ foreach($noticeWayMaps as &$val) {
                         ],
                     ])?>
 
-                    <?= $form->field($model, 'log_opt')->widget(SelectizeDropDownList::class, [
+                    <?php /*=$form->field($model, 'log_opt')->widget(SelectizeDropDownList::class, [
                         'items' => [
                             Crontab::LOG_OPT_IGNORE=>Yii::t('app','Ignore'),
                             Crontab::LOG_OPT_WRITE_FILE=>Yii::t('app','Generate the file by run id and write'),
@@ -482,7 +482,8 @@ foreach($noticeWayMaps as &$val) {
                         'options' => [
                             'placeholder'=>Yii::t('app', 'The default ignore')
                         ],
-                    ])?>
+                    ])->hint(Yii::t('app', 'The log output is best recorded in a file using a pipeline method. Do not let the worker process read and write, otherwise it will affect the execution of other tasks.'));
+                    */?>
 
                     <?= $form->field($model, 'retries')->textInput(['placeholder'=>Yii::t('app', 'Please enter the number of retries')])->hint(Yii::t('app', 'Zero means no retry')) ?>
 
@@ -515,13 +516,13 @@ foreach($noticeWayMaps as &$val) {
                     ])
                     ?>
 
-                    <!-- 不在这些节点上运行 -->
+                    <!-- 过滤节点 -->
                     <?= $form->field($model, 'notInAgentId')->widget(SelectizeDropDownList::class, [
                         'items' => Agents::getDropDownListData(),
                         'options' => [
                             'multiple'=>'multiple',
                             'style'=>'display:none;',
-                            'placeholder'=>Yii::t('app', '')
+                            'placeholder'=>Yii::t('app', 'Not running on these nodes')
                         ],
                         'clientOptions' => [
                             'plugins'=> ['remove_button'],

@@ -185,7 +185,6 @@ class Log
      */
     public static function flush()
     {
-
         if (self::$_enabled == FALSE) {
             return FALSE;
         }
@@ -410,20 +409,21 @@ class Log
     /**
      * 支持毫秒格式化日期
      *
-     * @param string $format
      * @param null $uTimeStamp
+     * @param string $format
      *
      * @return bool|string
      */
-    public static function uDate($format = 'Y-m-d H:i:s.u', $uTimeStamp = null)
+    public static function uDate($uTimeStamp = null, $format = 'Y-m-d H:i:s.u')
     {
         if (is_null($uTimeStamp))
             $uTimeStamp = microtime(true);
 
         $timestamp = floor($uTimeStamp);
-        $milliseconds = str_pad(round(($uTimeStamp - $timestamp) * 1000000), 6, 0);
+        $milliseconds = str_pad(round(($uTimeStamp - $timestamp) * 1000), 3, 0);
         // 把格式Y-m-d H:i:s.u的u替换成毫秒值
-        return date(preg_replace('#(?<!\\\\)u#', $milliseconds, $format), $uTimeStamp);
+//        return date(preg_replace('#(?<!\\\\)u#', $milliseconds, $format), $uTimeStamp);
+        return date(str_replace('u', $milliseconds, $format), $uTimeStamp);
     }
 
     /**

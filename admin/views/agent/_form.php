@@ -4,7 +4,6 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 use app\models\Agents;
 use app\models\Category;
-use yii\helpers\BaseHtml;
 use dosamigos\selectize\SelectizeDropDownList;
 
 /* @var $this yii\web\View */
@@ -47,9 +46,9 @@ use dosamigos\selectize\SelectizeDropDownList;
 
                     <?= $form->field($model, 'name')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the server name')]) ?>
 
-                    <?= $form->field($model, 'ip')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the server ip')]) ?>
+                    <?= $form->field($model, 'ip')->textInput(['maxlength' => true, 'placeholder'=>Yii::t('app', 'Please enter the server ip'), 'disabled'=> !$model->isNewRecord]) ?>
 
-                    <?= $form->field($model, 'port')->textInput(['placeholder'=>Yii::t('app', 'Please enter the server port')]) ?>
+                    <?= $form->field($model, 'port')->textInput(['placeholder'=>Yii::t('app', 'Please enter the server port'), 'disabled'=> !$model->isNewRecord]) ?>
 
                     <?= $form->field($model, 'status')->dropDownList([
                         Agents::STATUS_ENABLED=>Yii::t('app','Enabled'),

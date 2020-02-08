@@ -17,6 +17,8 @@ class Tasks
     public static $table;
 
     /**
+     * 下一分钟等待运行的任务内存表
+     *
      * TYPE_INT 1(Mysql TINYINT): 2 ^ 8 = -128 ~ 127
      * TYPE_INT 2(Mysql SMALLINT): 2 ^ (8 * 2) = -327689 ~ 32767
      * TYPE_INT 4(Mysql INT): 2 ^ (8 * 4) = -2147483648 ~ 2147483647
@@ -105,7 +107,7 @@ class Tasks
                 if ($currentTime < $task['sec']) {
                     continue;
                 }
-                // 如果任务已经被删除
+                // 如果任务已经被后台删除
                 $taskInfo = $loadTasks->get($task['taskId']);
                 // key不存在会返回false
                 if ($taskInfo === false) {
@@ -117,7 +119,7 @@ class Tasks
                     self::$table->del($runId);
                     continue;
                 }
-                // 超时
+                // 超时; 超时不删除记录，直到它运行完成后，下次清理的时候再清理掉内存表中的记录; 强杀会被父进程捕捉到进程退出，然后改变任务状态，等待下次清理。
                 if ($maxTime > 0 && ($currentTime - $task['sec']) > $maxTime) {
                     $msg = '最大执行时间: ' . msTimeFormat($maxTime) . PHP_EOL;
 

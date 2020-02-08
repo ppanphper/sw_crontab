@@ -85,7 +85,7 @@ class DbLog
             'title'       => $title,
             'msg'         => is_scalar($msg) ? $msg : json_encode($msg, JSON_UNESCAPED_UNICODE),
             'consumeTime' => $consumeTime,
-            'created'     => time(),
+            'created'     => microtime(true),
             'retries'     => $retries,
         ];
         if ($extendLogField) {
@@ -140,7 +140,6 @@ class DbLog
     {
         try {
             $stats = self::$_logChannel->stats();
-            $dateFormat = configItem('default_date_format');
             if ($stats['queue_num'] > 0) {
                 for ($i = 0; $i < $stats['queue_num']; $i++) {
                     $originLog = self::$_logChannel->pop();
@@ -153,7 +152,7 @@ class DbLog
                         }
                         // 不是日志入库重试
                         if (!isset($originLog['retryCount'])) {
-                            $msg .= '[' . $originLog['title'] . ' ' . date($dateFormat, $originLog['created']) . ']' . PHP_EOL;
+                            $msg .= '[' . Log::uDate($originLog['created']) . ' ' . $originLog['title'] . ']' . PHP_EOL;
                             if ($originLog['msg']) {
                                 $msg .= $originLog['msg'] . PHP_EOL;
                             }
@@ -215,5 +214,9 @@ class DbLog
     public static function getMemoryTableKey($taskId, $runId, $retries)
     {
         return $taskId . $runId . $retries;
+    }
+
+    public static function getTable() {
+        return self::$_table;
     }
 }

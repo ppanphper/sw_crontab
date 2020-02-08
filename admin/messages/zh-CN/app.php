@@ -168,6 +168,7 @@ return [
     'Agent Information' => '节点信息',
     'Monitor agent node offline alarm' => '监控代理节点离线报警',
     'Not running on these nodes' => '不在这些节点上运行',
+    'Filter nodes' => '过滤节点',
     'Cannot be blank' => '不能为空',
     'Must be an integer' => '必须是整数',
     'Please enter the number of retries' => '请输入重试次数',
@@ -176,4 +177,5 @@ return [
     'Zero means immediate retry' => '0表示立即重试',
     'Failed validation form' => '验证表单失败',
     'Generate the file by run id and write' => '按运行Id生成文件并写入',
+    'The log output is best recorded in a file using a pipeline method. Do not let the worker process read and write, otherwise it will affect the execution of other tasks.' => '日志输出最好使用管道方式记录到文件里，不要让worker进程来读取写入，否则会影响到其他任务的执行',
 ];

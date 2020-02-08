@@ -30,7 +30,7 @@ class Process
     private static $_processStdOut = [];
     private static $_maxStdOut = 60000;
     // 输出写入按运行Id生成的日志文件
-    private static $_processLogWriteFile = [];
+//    private static $_processLogWriteFile = [];
 
     public $task;
 
@@ -94,9 +94,10 @@ class Process
                     DbLog::endLog($processTask['runId'], $processTask['taskId'], $code, "任务运行完成", $processTask['stdout'], $consumeTime);
 
                     // 执行失败报警 需要放到最后面，以免查不到日志
-                    if ($code != Constants::CUSTOM_CODE_END_RUN) {
+                    if ($code != Constants::CUSTOM_CODE_END_RUN && $code != Constants::CUSTOM_CODE_CONCURRENCY_LIMIT) {
                         Report::taskExecFailed($processTask['taskId'], $processTask['runId'], $code, $ret['signal'], $processTask['stdout']);
                     }
+
                     /**
                      * 如果不是正常结束运行，就要看任务是否需要重试
                      * 过滤掉命令解析错误，变更用户错误的情况
@@ -161,7 +162,8 @@ class Process
                 }
                 // 关闭创建的好的管道
                 self::$_processList[$pid]->close();
-                unset(self::$_processList[$pid], self::$_processStdOut[$pid], self::$_processLogWriteFile[$pid]);
+//                unset(self::$_processList[$pid], self::$_processStdOut[$pid], self::$_processLogWriteFile[$pid]);
+                unset(self::$_processList[$pid], self::$_processStdOut[$pid]);
             }
 
         });
@@ -216,7 +218,8 @@ class Process
                 }
 
                 // 是否按运行Id生成日志文件并记录输出
-                if (isset(self::$_processLogWriteFile[$pid])) {
+                // 日志输出最好使用管道方式记录到文件里，不要让worker进程来读取写入，否则会影响到其他任务的执行
+                /*if (isset(self::$_processLogWriteFile[$pid])) {
                     $task = self::$_processLogWriteFile[$pid];
                     $logPath = date('Y-m-d', $task['sec']) . DIRECTORY_SEPARATOR . $task['taskId'];
                     Log::createLogDir($logPath);
@@ -230,7 +233,7 @@ class Process
                     fwrite($fp, $tmp);
                     // 刷进磁盘，阻塞操作
                     fclose($fp);
-                }
+                }*/
             }
         });
 
@@ -243,13 +246,13 @@ class Process
         ]);
 
         // 是否记录输出到日志文件
-        if ($task['logOpt'] == Constants::LOG_OPT_WRITE_FILE) {
+        /*if ($task['logOpt'] == Constants::LOG_OPT_WRITE_FILE) {
             self::$_processLogWriteFile[$pid] = [
                 'taskId' => $task['taskId'],
                 'runId'  => $task['runId'],
                 'sec'    => $task['sec'],
             ];
-        }
+        }*/
 
         self::$_processList[$pid] = $process;
 
@@ -294,7 +297,7 @@ class Process
             // 上报监控系统变更运行时用户失败
             Report::monitor(Constants::MONITOR_KEY_RUN_USER_CHANGE_FAILED . '.' . $this->task['taskId']);
             DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_RUN_USER_CHANGE_FAILED, '子进程修改运行时用户失败', $msg);
-            exit(Constants::EXIT_CODE_RUN_USER_CHANGE_FAILED);
+            $process->exit(Constants::EXIT_CODE_RUN_USER_CHANGE_FAILED);
         }
 
         // 如果设置了并发数限制, 并且不是重试(重试不占并发数)
@@ -312,15 +315,15 @@ class Process
             $result = $redisObject->evalScript('incr_max', $redisKey, [$this->task['execNum'], 60]);
             //限制任务多次执行，保证同时只有符合数量的任务运行。如果限制条件为0，则不限制数量
             if ($result && $result[0] == 0) {
-                $msg = '并发达到阀值，本次不执行' . PHP_EOL
-                    . '当前并发数: ' . $result[1] . PHP_EOL
-                    . '限制并发数: ' . $this->task['execNum'];
-                echo $msg;
-                exit(Constants::EXIT_CODE_CONCURRENT);
+                // 不记录并发超限日志，最终都要删除的
+//                $msg = '当前并发数: ' . $result[1] . PHP_EOL
+//                    . '限制并发数: ' . $this->task['execNum'];
+//                DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CONCURRENCY_LIMIT, '并发达到阀值，本次不执行', $msg);
+                $process->exit(Constants::EXIT_CODE_CONCURRENT);
             }
         }
 
-        // 上报监控系统创建进程失败
+        // 上报监控系统任务准备开始运行
         Report::monitor(Constants::MONITOR_KEY_CHILD_PROCESS_STARTS_RUN . '.' . $this->task['taskId']);
         DbLog::log($this->task['runId'], $this->task['taskId'], Constants::CUSTOM_CODE_CHILD_PROCESS_STARTS_RUN, '任务开始执行', $this->task['command']);
 
@@ -332,7 +335,7 @@ class Process
         }
         // 执行失败
         if (!$bool) {
-            exit(Constants::CUSTOM_CODE_EXEC_FAILED);
+            $process->exit(Constants::CUSTOM_CODE_EXEC_FAILED);
         }
     }
 

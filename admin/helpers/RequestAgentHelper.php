@@ -43,6 +43,8 @@ class RequestAgentHelper
      * @return array
      */
     public static function tcpRequest($ip, $port, $sendData) {
+        $retryCount = 1;
+        retry:
         $client = new SwooleClient(SWOOLE_SOCK_TCP | SWOOLE_KEEP);
         if (!$client->connect($ip, $port, 2)) {
             //connect fail
@@ -71,7 +73,13 @@ class RequestAgentHelper
             } else {
                 $msg = 'send fail, '. socket_strerror($errorCode) . '; address = ' . $ip . ':' . $port;
             }
-
+            $client->close(true);
+            logWarning(__METHOD__ . ' '.$msg);
+            // 重试一次
+            if ($retryCount > 0) {
+                $retryCount--;
+                goto retry;
+            }
             return Packet::packFormat($msg, $errorCode);
         }
 

@@ -55,8 +55,6 @@ if (!class_exists('Agent\\Libs\\Loader')) {
 
 require __DIR__ . '/vendor/autoload.php';
 
-Server::setPidFile(LOGS_PATH . 'agent_' . configItem('server_listen_port', 8901) . '.pid');
-Server::setStatsPidFile(LOGS_PATH . 'agent_' . configItem('server_listen_port', 8901) . '_stats.pid');
 Server::init();
 Server::start(function ($opt) {
 
