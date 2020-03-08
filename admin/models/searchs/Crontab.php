@@ -8,6 +8,7 @@ use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use app\models\Crontab as CrontabModel;
 use app\models\ViaTable;
+use yii\data\Sort;
 
 /**
  * Crontab represents the model behind the search form about `app\models\Crontab`.
@@ -96,7 +97,7 @@ class Crontab extends CrontabModel
         }
 
         if ($this->status === '' || (is_string($this->status) && trim($this->status) === '')) {
-            $query->where(['<>', 'a.status', -1]);
+            $query->where(['>', 'a.status', -1]);
         }
 
         // grid filtering conditions
@@ -107,22 +108,22 @@ class Crontab extends CrontabModel
         ]);
         $joinWith = [];
         if($this->agentId) {
-            /** @see Crontab::getAgents() */
-            $joinWith[] = 'agents';
-            $query->andWhere('b.bid = :bid OR b.bid IS NULL',[
-                ':bid'=>$this->agentId
-            ]);
 
             // 查询出不在这个节点运行的任务，过滤掉
-//            $ids = ViaTable::find()->select('aid')->where([
-//                'bid' => $this->agentId,
-//                'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS,
-//            ])->asArray();
-            $subQuery = ViaTable::find()->select('aid')->where([
-                'bid' => $this->agentId,
-                'type' => ViaTable::TYPE_CRONTAB_NOT_IN_AGENTS,
-            ]);
-            $query->andWhere(['NOT IN', 'a.id', $subQuery]);
+//            SELECT a.id, b.*
+//            FROM `crontab` `a`
+//            LEFT JOIN `via_table` `b` ON (`a`.`id` = `b`.`aid` AND `b`.`type`=2)
+//                        AND (b.bid = '1' OR b.bid IS NULL)
+//            LEFT JOIN via_table c ON (`a`.`id` = `c`.`aid` AND `c`.`type`=3 AND c.`bid` = '1')
+//            WHERE (`a`.`status` > -1) AND  c.id IS NULL
+            /** @see Crontab::getAgents() */
+            $joinWith['agents'] = function ($query) {
+                $query->andOnCondition('b.bid = :bid OR b.bid IS NULL', [':bid' => $this->agentId]);
+            };
+            /** @see Crontab::getNotInAgents() */
+            $joinWith['notInAgents'] = function ($query) {
+                $query->andOnCondition('d.bid = :bid', [':bid' => $this->agentId])->andWhere('d.id IS NULL');
+            };
 
             $this->agentInfo = [];
             $rows = Agents::getData();
@@ -148,7 +149,7 @@ class Crontab extends CrontabModel
             $this->isSearched = true;
             $query->select([
                 'a.*',
-            ])->joinWith($joinWith);
+            ])->joinWith($joinWith, false);
         }
 
         if ($this->max_process_time) {
@@ -159,6 +160,11 @@ class Crontab extends CrontabModel
             ->andFilterWhere(['like', 'a.rule', $this->rule])
             ->andFilterWhere(['like', 'a.command', $this->command])
             ->andFilterWhere(['like', 'a.run_user', $this->run_user]);
+
+        $query->orderBy([
+            'update_time' => SORT_DESC,
+            'status' => SORT_DESC
+        ]);
 
         $dataProvider->totalCount = $query->count();
 

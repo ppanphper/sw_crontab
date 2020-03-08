@@ -363,24 +363,6 @@ class Log
 
     /**
      * @param $filePath
-     *
-     * @return null | resource
-     */
-    public static function getMmapFileHandle($filePath)
-    {
-        if (!file_exists($filePath)) {
-            $offset = self::generateLogFile($filePath);
-            if ($offset === false) {
-                return null;
-            }
-        }
-        $offset = filesize($filePath);
-        $fp = swoole\mmap::open($filePath, -1, $offset);
-        return $fp;
-    }
-
-    /**
-     * @param $filePath
      * @param string $openMode
      *
      * @return bool|resource
@@ -409,21 +391,22 @@ class Log
     /**
      * 支持毫秒格式化日期
      *
-     * @param null $uTimeStamp
-     * @param string $format
+     * @param null|float|int $uTimeStamp
+     * @param null|string $format
      *
      * @return bool|string
      */
-    public static function uDate($uTimeStamp = null, $format = 'Y-m-d H:i:s.u')
+    public static function uDate($format = 'Y-m-d H:i:s.u', $uTimeStamp = null)
     {
+        if (is_null($format))
+            $format = 'Y-m-d H:i:s.u';
         if (is_null($uTimeStamp))
             $uTimeStamp = microtime(true);
 
         $timestamp = floor($uTimeStamp);
         $milliseconds = str_pad(round(($uTimeStamp - $timestamp) * 1000), 3, 0);
         // 把格式Y-m-d H:i:s.u的u替换成毫秒值
-//        return date(preg_replace('#(?<!\\\\)u#', $milliseconds, $format), $uTimeStamp);
-        return date(str_replace('u', $milliseconds, $format), $uTimeStamp);
+        return date(preg_replace('#(?<!\\\\)u#', $milliseconds, $format), $uTimeStamp);
     }
 
     /**

@@ -152,7 +152,7 @@ class DbLog
                         }
                         // 不是日志入库重试
                         if (!isset($originLog['retryCount'])) {
-                            $msg .= '[' . Log::uDate($originLog['created']) . ' ' . $originLog['title'] . ']' . PHP_EOL;
+                            $msg .= '[' . Log::uDate(null, $originLog['created']) . ' ' . $originLog['title'] . ']' . PHP_EOL;
                             if ($originLog['msg']) {
                                 $msg .= $originLog['msg'] . PHP_EOL;
                             }
