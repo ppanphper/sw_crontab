@@ -13,7 +13,7 @@ if (file_exists(dirname(__FILE__).'/web/env.php')){
 }
 
 defined('YII_ENV') or define('YII_ENV', !empty($envInit['env']) ? $envInit['env'] : 'prod');
-defined('YII_DEBUG') or define('YII_DEBUG', (YII_ENV == 'dev'));
+defined('YII_DEBUG') or define('YII_DEBUG', (stripos(YII_ENV, 'dev') !== false));
 
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/vendor/yiisoft/yii2/Yii.php';

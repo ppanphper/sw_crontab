@@ -6,5 +6,5 @@
  * Time: 上午10:56
  */
 return [
-    'env'=>'dev',
+    'env'=>'dev-docker',
 ];

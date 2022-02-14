@@ -30,8 +30,8 @@ return [
 
     /**
      * client_type 参数值范围:
-     * @see CI_Cache_redis::CLIENT_TYPE_PHP_REDIS = 1
-     * @see CI_Cache_redis::CLIENT_TYPE_PHP_REDIS_CLUSTER = 2
+     * @see RedisClient::CLIENT_TYPE_PHP_REDIS = 1
+     * @see RedisClient::CLIENT_TYPE_PHP_REDIS_CLUSTER = 2
      */
     'clientType'        => 2,
 ];

@@ -22,12 +22,17 @@ class Donkeyid
     private $_table;
     private $_lock;
 
-    const snowflake = 0;
-    const TIMESTAMP_BITS = 42;
-    const NODE_ID_BITS = 12;
-    const SEQUENCE_BITS = 9;
-    const TIMESTAMP_LEFT_SHIFT = 21;
-    const NODE_ID_LEFT_SHIFT = 9;
+    const SNOWFLAKE = 0;
+    const TIMESTAMP_BITS = 42; //时间所占bit位数
+    const NODE_ID_BITS = 12; //节点所占bit位数
+    const SEQUENCE_BITS = 9; //毫秒内自增
+
+    const TIMESTAMP_LEFT_SHIFT = self::NODE_ID_BITS + self::SEQUENCE_BITS;
+    const NODE_ID_LEFT_SHIFT = self::SEQUENCE_BITS;
+
+    const TIMESTAMP_MASK = (-1 ^ (-1 << self::TIMESTAMP_BITS));
+    const NODE_ID_MASK = (-1 ^ (-1 << self::NODE_ID_BITS));
+    const SEQUENCE_MASK = (-1 ^ (-1 << self::SEQUENCE_BITS));
 
     public function __construct($node_id = false, $epoch = false)
     {
@@ -107,7 +112,7 @@ class Donkeyid
         if (!$isMacOS) {
             $this->_lock->lock();
         }
-        $col = $this->_table->get(self::snowflake);
+        $col = $this->_table->get(self::SNOWFLAKE);
         if ($col == false || $col["last_timestamp"] > $now) {
             $last_timestamp = $now;
             $sequence = mt_rand(0, 10) % 2;
@@ -116,18 +121,18 @@ class Donkeyid
             $sequence = $col["sequence"];
         }
         if ($now == $last_timestamp) {
-            $sequence = ($sequence + 1) & ((-1 ^ (-1 << self::SEQUENCE_BITS)));
+            $sequence = ($sequence + 1) & self::SEQUENCE_MASK;
             if ($sequence == 0) {
                 $now = $this->wait_next_ms();
             }
         }
-        $this->_table->set(self::snowflake, array("last_timestamp" => $now, "sequence" => $sequence));
+        $this->_table->set(self::SNOWFLAKE, array("last_timestamp" => $now, "sequence" => $sequence));
         // MacOS Mojave使用锁会异常退出
         if (!$isMacOS) {
             $this->_lock->unlock();
         }
-        $id = (($now - ($this->_epoch * 1000) & (-1 ^ (-1 << self::TIMESTAMP_BITS))) << self::TIMESTAMP_LEFT_SHIFT)
-            | (($this->_node_id & (-1 ^ (-1 << self::NODE_ID_BITS))) << self::NODE_ID_LEFT_SHIFT)
+        $id = ((($now - $this->_epoch * 1000) & self::TIMESTAMP_MASK) << self::TIMESTAMP_LEFT_SHIFT)
+            | (($this->_node_id & self::NODE_ID_MASK) << self::NODE_ID_LEFT_SHIFT)
             | ($sequence);
         return $id;
     }
@@ -143,8 +148,8 @@ class Donkeyid
     {
         return [
             'time' => ($id >> self::TIMESTAMP_LEFT_SHIFT) + ($this->_epoch * 1000),
-            'node_id' => ($id >> self::NODE_ID_LEFT_SHIFT) & (-1 ^ (-1 << self::NODE_ID_BITS)),
-            'sequence' => $id & (-1 ^ (-1 << self::SEQUENCE_BITS))
+            'node_id' => ($id >> self::NODE_ID_LEFT_SHIFT) & self::NODE_ID_MASK,
+            'sequence' => $id & self::SEQUENCE_MASK
         ];
     }
 }

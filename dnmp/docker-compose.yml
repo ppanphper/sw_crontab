@@ -1,0 +1,154 @@
+version: '3.8'
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: always
+    ports:
+      - 80:80
+      #- 443:443
+    volumes:
+      - ${APP_ROOT}:/var/www/html
+      - ${NGINX_CONF}:/etc/nginx/conf.d
+      - ${LOG}/nginx:/var/log/nginx
+    environment:
+      TZ: "$TZ"
+    env_file: .env
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.2
+
+  mysql:
+    image: mysql:${MYSQL_VERSION}
+    container_name: mysql
+#    restart: always
+    volumes:
+      - ${MYSQL_DATA}:/var/lib/mysql
+      - ${MYSQL_CONF}:/etc/mysql/conf.d/my.cnf
+      - ${LOG}/mysql:/logs
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      #MYSQL_USER: ${MYSQL_USER}
+      #MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: "$TZ"
+    env_file: .env
+    ports:
+      - ${MYSQL_PORT}:3306
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.3
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    container_name: redis
+#    restart: always
+    env_file: .env
+    volumes:
+      - ${REDIS_DATA}:/data
+      - ${REDIS_CONF}:/usr/local/etc/redis/redis.conf
+    ports:
+      - ${REDIS_PORT}:6379
+    command: [ redis-server, "/usr/local/etc/redis/redis.conf" ]
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.4
+
+  php70-admin:
+    image: phperdocker/ubuntu-php7.0:latest
+    container_name: php70-admin
+    restart: always
+    volumes:
+      - ${APP_ROOT}:/var/www/html
+      - ${COMPOSER}/php70:/root/.composer/
+      - ${FPM_WWW_CONF}:/etc/php/7.0/fpm/pool.d/www.conf
+      - ${FPM_PHP_INI}:/etc/php/7.0/fpm/php.ini
+      - ${LOG}/php:/var/log/php
+    expose:
+      - '9000'
+    environment:
+      TZ: "$TZ"
+    env_file: .env
+    depends_on:
+      - mysql
+      - redis
+      - composer
+    command:
+     - /bin/sh
+     - -c
+     - |
+       /var/www/html/dnmp/php70-admin.sh
+    tty: true
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.5
+
+  php70-agent:
+    image: phperdocker/ubuntu-php7.0:latest
+    container_name: php70-agent
+    restart: always
+    volumes:
+      - ${APP_ROOT}:/var/www/html
+      - ${COMPOSER}/php70:/root/.composer/
+      - ${LOG}/php:/var/log/php
+      - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
+    expose:
+      - "8901"
+    environment:
+      TZ: "$TZ"
+    env_file: .env
+    depends_on:
+      - mysql
+      - redis
+      - composer
+    command:
+      - /bin/sh
+      - -c
+      - |
+        php /var/www/html/agent/agent.php start
+    tty: true
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.6
+
+  php70-agent-2:
+    image: phperdocker/ubuntu-php7.0:latest
+    container_name: php70-agent-2
+    restart: always
+    volumes:
+      - ${APP_ROOT}:/var/www/html
+      - ${COMPOSER}/php70:/root/.composer/
+      - ${LOG}/php:/var/log/php
+      - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
+    expose:
+      - "8901"
+    environment:
+      TZ: "$TZ"
+    env_file: .env
+    depends_on:
+      - mysql
+      - redis
+      - composer
+    command:
+      - /bin/sh
+      - -c
+      - |
+        php /var/www/html/agent/agent.php start
+    tty: true
+    networks:
+      static-network:
+        ipv4_address: 172.20.0.7
+
+  composer:
+    image: composer
+    command: ["composer", "install"]
+    volumes:
+      - /var/www/html/admin
+      - /var/www/html/agent
+
+
+networks:
+  static-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

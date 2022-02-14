@@ -193,6 +193,20 @@ class Process
         $self = new self();
         $self->task = $task;
         $process = new SwooleProcess([$self, 'exec'], true, true);
+        swoole_event_add($process->pipe, function ($pipe) use ($process) {
+            $pid = $process->pid;
+            !isset(self::$_processStdOut[$pid]) && self::$_processStdOut[$pid] = "";
+            // 默认每次读取8192字节
+            $tmp = self::$_processList[$pid]->read();
+            if ($tmp) {
+                $len = mb_strlen(self::$_processStdOut[$pid]);
+                // 如果一次性读取超过了最大长度，就截取
+                if (($length = (self::$_maxStdOut - $len)) > 0) {
+                    self::$_processStdOut[$pid] .= mb_substr($tmp, 0, $length);
+                }
+            }
+        });
+
         $pid = $process->start();
         if ($pid === false) {
             // 标记任务状态为创建进程失败
@@ -205,37 +219,6 @@ class Process
             logError(__METHOD__ . ' 创建进程失败 errorMsg = ' . swoole_strerror(swoole_errno()));
             return false;
         }
-
-        swoole_event_add($process->pipe, function ($pipe) use ($pid) {
-            !isset(self::$_processStdOut[$pid]) && self::$_processStdOut[$pid] = "";
-            // 默认每次读取8192字节
-            $tmp = self::$_processList[$pid]->read();
-            if ($tmp) {
-                $len = mb_strlen(self::$_processStdOut[$pid]);
-                // 如果一次性读取超过了最大长度，就截取
-                if (($length = (self::$_maxStdOut - $len)) > 0) {
-                    self::$_processStdOut[$pid] .= mb_substr($tmp, 0, $length);
-                }
-
-                // 是否按运行Id生成日志文件并记录输出
-                // 日志输出最好使用管道方式记录到文件里，不要让worker进程来读取写入，否则会影响到其他任务的执行
-                /*if (isset(self::$_processLogWriteFile[$pid])) {
-                    $task = self::$_processLogWriteFile[$pid];
-                    $logPath = date('Y-m-d', $task['sec']) . DIRECTORY_SEPARATOR . $task['taskId'];
-                    Log::createLogDir($logPath);
-                    $logFilePath = Log::getLogFilePath($task['runId'], $logPath);
-                    $fp = Log::getFileHandle($logFilePath);
-                    if (!$fp) {
-                        logWarning('获取文件句柄失败: ' . $logFilePath);
-                        return;
-                    }
-                    // 写入缓存区
-                    fwrite($fp, $tmp);
-                    // 刷进磁盘，阻塞操作
-                    fclose($fp);
-                }*/
-            }
-        });
 
         self::$_table->set($pid, [
             'taskId' => $task['taskId'],
@@ -304,6 +287,7 @@ class Process
         if ($this->task['execNum'] && empty($this->task['retries'])) {
             // 加载Redis配置文件
             $redisConfig = configItem(null, null, 'redis');
+            // TODO 这里有个坑，短连接建立可能会超过设定的定时执行时间
             $redisObject = new RedisClient($redisConfig);
             // 如果是限制并发任务，开始申请执行权限
             $redisKey = Constants::REDIS_KEY_TASK_EXEC_NUM_PREFIX . $this->task['taskId'] . ':' . $this->task['sec'];

@@ -6,5 +6,5 @@
  * Time: 下午2:55
  */
 return [
-    'env' => 'dev',
+    'env' => 'dev-docker',
 ];

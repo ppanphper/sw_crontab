@@ -47,6 +47,30 @@ SWC(Swoole-Crontab)分布式定时任务系统
 
 6.开始使用
 --------------
+6.1 使用Docker运行
+--------------
+1.修改环境配置文件
+
+    admin/web/env.php
+    agent/env.php
+
+2.管理后台的配置文件修改
+
+    /path/to/admin/config/mailer.php 修改邮件配置
+    /path/to/admin/config/params.php 修改其他参数配置
+    
+3.Agent配置文件修改
+
+    /path/to/agent/Config/email.php 修改邮件配置
+    
+4.启动
+
+    需要先启动docker引擎
+    cd /path/to/dnmp 目录
+    docker-compose up -d
+    
+6.2 普通方式运行
+--------------
 1.安装环境依赖
 
     yum install -y pcre pcre-devel
