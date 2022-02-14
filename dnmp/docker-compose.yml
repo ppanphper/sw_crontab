@@ -77,7 +77,6 @@ services:
      - -c
      - |
        /var/www/html/dnmp/php70-admin.sh
-    tty: true
     networks:
       static-network:
         ipv4_address: 172.20.0.5
@@ -138,12 +137,17 @@ services:
       static-network:
         ipv4_address: 172.20.0.7
 
-  composer:
+  composer-admin:
     image: composer
-    command: ["composer", "install"]
+    command: [composer, "install"]
     volumes:
-      - /var/www/html/admin
-      - /var/www/html/agent
+      - ${APP_ROOT}/admin:/app
+      -
+  composer-agent:
+    image: composer
+    command: [composer, "install"]
+    volumes:
+      - ${APP_ROOT}/agent:/app
 
 
 networks:
