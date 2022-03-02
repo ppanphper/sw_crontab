@@ -71,7 +71,7 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer
+      - composer-admin
     command:
      - /bin/sh
      - -c
@@ -98,7 +98,7 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer
+      - composer-agent
     command:
       - /bin/sh
       - -c
@@ -126,7 +126,7 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer
+      - composer-agent
     command:
       - /bin/sh
       - -c
@@ -142,7 +142,7 @@ services:
     command: [composer, "install"]
     volumes:
       - ${APP_ROOT}/admin:/app
-      -
+
   composer-agent:
     image: composer
     command: [composer, "install"]
