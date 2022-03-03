@@ -5,7 +5,7 @@ services:
     container_name: nginx
     restart: always
     ports:
-      - 80:80
+      - 8081:80
       #- 443:443
     volumes:
       - ${APP_ROOT}:/var/www/html
@@ -138,13 +138,13 @@ services:
         ipv4_address: 172.20.0.7
 
   composer-admin:
-    image: composer
+    image: composer:1.10.25
     command: [composer, "install"]
     volumes:
       - ${APP_ROOT}/admin:/app
 
   composer-agent:
-    image: composer
+    image: composer:1.10.25
     command: [composer, "install"]
     volumes:
       - ${APP_ROOT}/agent:/app
