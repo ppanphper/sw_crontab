@@ -58,11 +58,12 @@ services:
     container_name: php70-admin
     restart: always
     volumes:
-      - ${APP_ROOT}:/var/www/html
-      - ${COMPOSER}/php70:/root/.composer/
+      - ${APP_ROOT}/admin:/var/www/html
+#      - ${COMPOSER}/php70:/root/.composer/
       - ${FPM_WWW_CONF}:/etc/php/7.0/fpm/pool.d/www.conf
       - ${FPM_PHP_INI}:/etc/php/7.0/fpm/php.ini
       - ${LOG}/php:/var/log/php
+    working_dir: /var/www/html
     expose:
       - '9000'
     environment:
@@ -71,12 +72,13 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer-admin
+#      - composer-admin
     command:
      - /bin/sh
      - -c
      - |
-       /var/www/html/dnmp/php70-admin.sh
+       composer install
+       && /var/www/html/dnmp/php70-admin.sh
     networks:
       static-network:
         ipv4_address: 172.20.0.5
@@ -86,10 +88,11 @@ services:
     container_name: php70-agent
     restart: always
     volumes:
-      - ${APP_ROOT}:/var/www/html
-      - ${COMPOSER}/php70:/root/.composer/
+      - ${APP_ROOT}/agent:/var/www/html
+#      - ${COMPOSER}/php70:/root/.composer/
       - ${LOG}/php:/var/log/php
       - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
+    working_dir: /var/www/html
     expose:
       - "8901"
     environment:
@@ -98,12 +101,13 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer-agent
+#      - composer-agent
     command:
       - /bin/sh
       - -c
       - |
-        php /var/www/html/agent/agent.php start
+        composer install
+        && php /var/www/html/agent/agent.php start
     tty: true
     networks:
       static-network:
@@ -114,10 +118,11 @@ services:
     container_name: php70-agent-2
     restart: always
     volumes:
-      - ${APP_ROOT}:/var/www/html
-      - ${COMPOSER}/php70:/root/.composer/
+      - ${APP_ROOT}/agent:/var/www/html
+#      - ${COMPOSER}/php70:/root/.composer/
       - ${LOG}/php:/var/log/php
       - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
+    working_dir: /var/www/html
     expose:
       - "8901"
     environment:
@@ -126,28 +131,29 @@ services:
     depends_on:
       - mysql
       - redis
-      - composer-agent
+#      - composer-agent
     command:
       - /bin/sh
       - -c
       - |
-        php /var/www/html/agent/agent.php start
+        composer install
+        && php /var/www/html/agent/agent.php start
     tty: true
     networks:
       static-network:
         ipv4_address: 172.20.0.7
 
-  composer-admin:
-    image: composer:1.10.25
-    command: [composer, "install"]
-    volumes:
-      - ${APP_ROOT}/admin:/app
-
-  composer-agent:
-    image: composer:1.10.25
-    command: [composer, "install"]
-    volumes:
-      - ${APP_ROOT}/agent:/app
+#  composer-admin:
+#    image: composer:1.10.25
+#    command: [composer, "install"]
+#    volumes:
+#      - ${APP_ROOT}/admin:/app
+#
+#  composer-agent:
+#    image: composer:1.10.25
+#    command: [composer, "install"]
+#    volumes:
+#      - ${APP_ROOT}/agent:/app
 
 
 networks:
