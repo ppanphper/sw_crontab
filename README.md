@@ -67,6 +67,10 @@ SWC(Swoole-Crontab)分布式定时任务系统
 
     需要先启动docker引擎
     cd /path/to/dnmp 目录
+    安装依赖库
+    docker-compose run --rm composer-admin install
+    docker-compose run --rm composer-agent install
+    启动
     docker-compose up -d
     
 6.2 普通方式运行
