@@ -72,7 +72,7 @@ services:
     depends_on:
       - mysql
       - redis
-#      - composer-admin
+      - composer-admin
     command:
      - /bin/sh
      - -c
@@ -101,7 +101,7 @@ services:
     depends_on:
       - mysql
       - redis
-#      - composer-agent
+      - composer-agent
     command:
       - /bin/sh
       - -c
@@ -131,7 +131,7 @@ services:
     depends_on:
       - mysql
       - redis
-#      - composer-agent
+      - composer-agent
     command:
       - /bin/sh
       - -c
@@ -143,17 +143,17 @@ services:
       static-network:
         ipv4_address: 172.20.0.7
 
-#  composer-admin:
-#    image: composer:1.10.25
-#    command: [composer, "install"]
-#    volumes:
-#      - ${APP_ROOT}/admin:/app
-#
-#  composer-agent:
-#    image: composer:1.10.25
-#    command: [composer, "install"]
-#    volumes:
-#      - ${APP_ROOT}/agent:/app
+  composer-admin:
+    image: composer:1.10.19
+    command: [composer, "install"]
+    volumes:
+      - ${APP_ROOT}/admin:/app
+
+  composer-agent:
+    image: composer:1.10.19
+    command: [composer, "install"]
+    volumes:
+      - ${APP_ROOT}/agent:/app
 
 
 networks:
