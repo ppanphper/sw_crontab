@@ -62,8 +62,13 @@ SWC(Swoole-Crontab)分布式定时任务系统
 3.Agent配置文件修改
 
     /path/to/agent/Config/email.php 修改邮件配置
+
+4.配置host
     
-4.启动
+    Linux/MacOS:
+        sudo -- sh -c  "echo '127.0.0.1 docker.swc.com' >> /etc/hosts"
+
+5.启动
 
     需要先启动docker引擎
     cd /path/to/dnmp 目录
@@ -72,6 +77,7 @@ SWC(Swoole-Crontab)分布式定时任务系统
     docker-compose run --rm composer-agent install
     启动
     docker-compose up -d
+    访问: http://docker.swc.com
     
 6.2 普通方式运行
 --------------

@@ -59,10 +59,10 @@ services:
     restart: always
     volumes:
       - ${APP_ROOT}/admin:/var/www/html
-#      - ${COMPOSER}/php70:/root/.composer/
       - ${FPM_WWW_CONF}:/etc/php/7.0/fpm/pool.d/www.conf
       - ${FPM_PHP_INI}:/etc/php/7.0/fpm/php.ini
       - ${LOG}/php:/var/log/php
+      - ${APP_ROOT}/dnmp/php70-admin.sh:/var/www/dnmp/php70-admin.sh
     working_dir: /var/www/html
     expose:
       - '9000'
@@ -76,8 +76,7 @@ services:
      - /bin/sh
      - -c
      - |
-       composer install
-       && /var/www/html/dnmp/php70-admin.sh
+       /var/www/dnmp/php70-admin.sh
     networks:
       static-network:
         ipv4_address: 172.20.0.5
@@ -88,7 +87,6 @@ services:
     restart: always
     volumes:
       - ${APP_ROOT}/agent:/var/www/html
-#      - ${COMPOSER}/php70:/root/.composer/
       - ${LOG}/php:/var/log/php
       - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
     working_dir: /var/www/html
@@ -104,8 +102,7 @@ services:
       - /bin/sh
       - -c
       - |
-        composer install
-        && php /var/www/html/agent/agent.php start
+        php /var/www/html/agent/agent.php start
     tty: true
     networks:
       static-network:
@@ -117,7 +114,6 @@ services:
     restart: always
     volumes:
       - ${APP_ROOT}/agent:/var/www/html
-#      - ${COMPOSER}/php70:/root/.composer/
       - ${LOG}/php:/var/log/php
       - ${CLI_PHP_INI}:/etc/php/7.0/cli/php.ini
     working_dir: /var/www/html
@@ -133,8 +129,7 @@ services:
       - /bin/sh
       - -c
       - |
-        composer install
-        && php /var/www/html/agent/agent.php start
+        php /var/www/html/agent/agent.php start
     tty: true
     networks:
       static-network:
